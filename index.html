@@ -490,6 +490,7 @@ async function startApp() {
    메인 화면
 ════════════════════════════════ */
 let cachedItems = [];
+let likedItemIds = new Set();
 
 async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
@@ -516,8 +517,8 @@ async function renderMain(q) {
     <p>뜻밖의 득템이 기다리는 구로구마켓 👀</p>
     <div style="height:12px;"></div>
     <div class="search-row">
-      <input type="text" id="_sq" placeholder="어떤 물건을 찾고 계세요?" value="${q}" oninput="renderMain(this.value)">
-      <button onclick="renderMain(document.getElementById('_sq').value)">검색</button>
+      <input type="text" id="_sq" placeholder="어떤 물건을 찾고 계세요?" value="${q}" oninput="renderMainList(this.value)">
+      <button onclick="renderMainList(document.getElementById('_sq').value)">검색</button>
     </div>
   </div>
   <div class="filter-bar">
@@ -531,18 +532,26 @@ async function renderMain(q) {
   const items = await fetchItems();
   cachedItems = items;
 
-  const likedSet = new Set();
-  await Promise.all(items.map(async i => { if (await isLiked(i.id)) likedSet.add(i.id); }));
+  likedItemIds = new Set();
+  await Promise.all(items.map(async i => { if (await isLiked(i.id)) likedItemIds.add(i.id); }));
 
-  let list = items.filter(i => {
+  renderMainList(q);
+}
+
+function renderMainList(q) {
+  q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
+
+  let list = cachedItems.filter(i => {
     const mc = catF === '전체' || i.category === catF;
     const ms = statF === '전체' || (statF === '판매중' && !i.sold) || (statF === '판매완료' && i.sold);
     const mq = !q || i.title.includes(q);
     return mc && ms && mq;
   });
 
-  document.querySelector('#s-main .grid').innerHTML = list.length
-    ? list.map(i => cardH(i, likedSet.has(i.id))).join('')
+  const grid = document.querySelector('#s-main .grid');
+  if (!grid) return;
+  grid.innerHTML = list.length
+    ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
     : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
 }
 
@@ -569,6 +578,8 @@ function cardH(i, liked) {
 
 async function doToggleLike(itemId, btn) {
   const liked = await toggleLike(itemId);
+  if (liked) likedItemIds.add(itemId);
+  else likedItemIds.delete(itemId);
   btn.textContent = liked ? '❤️' : '🤍';
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
 }
