@@ -438,6 +438,18 @@ async function isLiked(itemId) {
   return data && data.length > 0;
 }
 
+async function fetchLikedItemIds(items) {
+  const ids = items.map(i => i.id);
+  if (!ids.length) return new Set();
+  const { data, error } = await sb
+    .from('likes')
+    .select('item_id')
+    .eq('user_key', userKey)
+    .in('item_id', ids);
+  if (error) { console.error(error); return new Set(); }
+  return new Set((data || []).map(l => l.item_id));
+}
+
 async function insertComment(itemId, content, parentId = null) {
   await sb.from('comments').insert({
     item_id: itemId, parent_id: parentId,
@@ -491,6 +503,7 @@ async function startApp() {
 ════════════════════════════════ */
 let cachedItems = [];
 let likedItemIds = new Set();
+let likedItemIdsReady = false;
 
 async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
@@ -529,11 +542,12 @@ async function renderMain(q) {
   </div>
   <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
 
+  if (cachedItems.length) renderMainList(q);
+
   const items = await fetchItems();
   cachedItems = items;
-
-  likedItemIds = new Set();
-  await Promise.all(items.map(async i => { if (await isLiked(i.id)) likedItemIds.add(i.id); }));
+  likedItemIds = await fetchLikedItemIds(items);
+  likedItemIdsReady = true;
 
   renderMainList(q);
 }
@@ -580,6 +594,7 @@ async function doToggleLike(itemId, btn) {
   const liked = await toggleLike(itemId);
   if (liked) likedItemIds.add(itemId);
   else likedItemIds.delete(itemId);
+  likedItemIdsReady = true;
   btn.textContent = liked ? '❤️' : '🤍';
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
 }
@@ -774,6 +789,9 @@ async function doDeleteItem() {
 
 async function doWishDet(itemId) {
   const liked = await toggleLike(itemId);
+  if (liked) likedItemIds.add(itemId);
+  else likedItemIds.delete(itemId);
+  likedItemIdsReady = true;
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
   const b1 = document.getElementById('_wbtn');
   const b2 = document.getElementById('_wb2');
@@ -787,15 +805,15 @@ async function doWishDet(itemId) {
 async function renderMy() {
   const allItems = cachedItems.length ? cachedItems : await fetchItems();
   cachedItems = allItems;
+  if (!likedItemIdsReady) {
+    likedItemIds = await fetchLikedItemIds(allItems);
+    likedItemIdsReady = true;
+  }
   const mine = allItems.filter(i => i.seller_name === myN);
 
   let tabList = myTab === 'selling' ? mine.filter(i => !i.sold)
     : myTab === 'sold' ? mine.filter(i => i.sold)
-    : await (async () => {
-        const liked = allItems.filter(async i => await isLiked(i.id));
-        const checks = await Promise.all(allItems.map(i => isLiked(i.id)));
-        return allItems.filter((_, idx) => checks[idx]);
-      })();
+    : allItems.filter(i => likedItemIds.has(i.id));
 
   const msgs = {
     selling: '아직 판매중인 상품이 없어요<br>팔기 버튼으로 올려봐요!',
@@ -842,8 +860,9 @@ async function renderMy() {
   </div>`;
 
   if (myTab === 'wish') {
-    const checks = await Promise.all(allItems.map(i => isLiked(i.id)));
-    const wished = allItems.filter((_, idx) => checks[idx]);
+    likedItemIds = await fetchLikedItemIds(allItems);
+    likedItemIdsReady = true;
+    const wished = allItems.filter(i => likedItemIds.has(i.id));
     document.getElementById('_mybody').innerHTML = wished.length
       ? wished.map(i => itemRowH(i)).join('')
       : `<div class="empty-my">${msgs.wish}</div>`;
