@@ -76,7 +76,8 @@
     .card { background: var(--surface); border-radius: var(--r); border: .5px solid var(--br); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
     .card:active { opacity: .88; }
     .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
-    .card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
+    .photo-count { position: absolute; left: 6px; bottom: 6px; background: rgba(20,20,40,.62); color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 3px 7px; }
     .card-body { padding: 8px 9px 10px; border-top: .5px solid var(--br); }
     .card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-price { font-size: 13px; font-weight: 800; color: var(--pink-dark); }
@@ -92,8 +93,10 @@
     .empty { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; grid-column: span 2; }
 
     /* ─── 상품 상세 ─── */
-    .det-img { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; overflow: hidden; }
-    .det-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .det-gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: var(--surface); }
+    .det-gallery::-webkit-scrollbar { display: none; }
+    .det-img { width: 100%; flex: 0 0 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; overflow: hidden; scroll-snap-align: start; }
+    .det-img img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
     .det-content { background: var(--surface); padding: 14px; }
     .det-price { font-size: 22px; font-weight: 800; color: var(--pink-dark); margin-bottom: 3px; }
     .det-title { font-size: 15px; font-weight: 800; margin-bottom: 5px; }
@@ -170,7 +173,7 @@
     .item-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: .5px solid var(--br); padding: 11px 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .item-row:active { background: var(--bg); }
     .item-row-em { font-size: 20px; width: 40px; height: 40px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
-    .item-row-em img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .item-row-em img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
     .item-row-info { flex: 1; min-width: 0; }
     .item-row-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item-row-price { font-size: 12px; font-weight: 800; color: var(--pink-dark); margin-top: 1px; }
@@ -187,9 +190,11 @@
     .fr input, .fr select, .fr textarea { width: 100%; border: .5px solid var(--br2); border-radius: 10px; padding: 9px 11px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; resize: none; }
     .fr textarea { height: 80px; }
     .fr input:focus, .fr select:focus, .fr textarea:focus { outline: none; border-color: var(--pink); background: var(--surface); }
-    .img-zone { width: 100%; height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
-    .img-zone.has-img { border-style: solid; padding: 0; background: var(--surface); }
-    .img-zone img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .img-zone { width: 100%; min-height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
+    .img-zone.has-img { align-items: stretch; justify-content: flex-start; border-style: solid; padding: 8px; background: var(--surface); overflow-x: auto; }
+    .img-zone.has-img::-webkit-scrollbar { display: none; }
+    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+    .photo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
     .reg-btn:active { background: var(--pink-dark); }
 
@@ -223,7 +228,7 @@
 
 <input type="file" id="f-init" accept="image/*" style="display:none">
 <input type="file" id="f-edit" accept="image/*" style="display:none">
-<input type="file" id="f-item" accept="image/*" style="display:none">
+<input type="file" id="f-item" accept="image/*" multiple style="display:none">
 
 <div id="app">
   <div id="s-nick" class="screen active"></div>
@@ -245,13 +250,14 @@ const SUPABASE_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
 /* ── Supabase 초기화 ── */
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const DELETED_MARK = '__GUROGU_MARKET_DELETED__';
 
 /* ── 상태 ── */
 const emM = { 의류:'👗', 전자기기:'📱', 도서:'📚', 생활용품:'🏠', 취미:'🎮', 식물:'🌿', 기타:'📦' };
 const bgM = { 의류:'#FBEAF0', 전자기기:'#E6F1FB', 도서:'#FAEEDA', 생활용품:'#EAF3DE', 취미:'#EEEDFE', 식물:'#E1F5EE', 기타:'#F1EFE8' };
 let myN = localStorage.getItem('gurogu_nickname') || '';
 let myP = localStorage.getItem('gurogu_profile_photo') || '';
-let itemPhoto = '';
+let itemPhotos = [];
 let catF = '전체', statF = '판매중';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
@@ -270,8 +276,30 @@ function logoImg() {
 function isImg(v) {
   return typeof v === 'string' && v.startsWith('data:image/');
 }
+function itemPhotoList(v) {
+  if (!v) return [];
+  if (isImg(v)) return [v];
+  if (typeof v !== 'string' || v[0] !== '[') return [];
+  try {
+    const parsed = JSON.parse(v);
+    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function itemPayload(photos, category) {
+  return photos.length ? JSON.stringify(photos) : (emM[category] || '📦');
+}
 function itemMedia(v, category) {
-  return isImg(v) ? `<img src="${v}" alt="">` : (v || emM[category] || '📦');
+  const photos = itemPhotoList(v);
+  return photos.length ? `<img src="${photos[0]}" alt="">` : (v || emM[category] || '📦');
+}
+function itemGallery(v, category) {
+  const photos = itemPhotoList(v);
+  if (!photos.length) {
+    return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${v || emM[category] || '📦'}</div>`;
+  }
+  return photos.map(p => `<div class="det-img"><img src="${p}" alt="상품 사진"></div>`).join('');
 }
 function saveProfile() {
   if (myN) localStorage.setItem('gurogu_nickname', myN);
@@ -335,8 +363,9 @@ document.getElementById('f-edit').addEventListener('change', async e => {
   renderMy(); toast('프로필 사진을 변경했어요 📸');
 });
 document.getElementById('f-item').addEventListener('change', async e => {
-  const f = e.target.files[0]; if (!f) return;
-  itemPhoto = await readFile(f);
+  const files = Array.from(e.target.files || []);
+  if (!files.length) return;
+  itemPhotos = await Promise.all(files.map(readFile));
   renderItemPhotoZone();
 });
 
@@ -349,7 +378,9 @@ async function fetchItems() {
     .select('*, likes(count)')
     .order('created_at', { ascending: false });
   if (error) { console.error(error); return []; }
-  return data.map(i => ({ ...i, likeCount: i.likes[0]?.count || 0 }));
+  return data
+    .filter(i => i.description !== DELETED_MARK)
+    .map(i => ({ ...i, likeCount: i.likes[0]?.count || 0 }));
 }
 
 async function fetchComments(itemId) {
@@ -376,8 +407,23 @@ async function updateSoldStatus(id, sold) {
 async function deleteItem(id) {
   await sb.from('likes').delete().eq('item_id', id);
   await sb.from('comments').delete().eq('item_id', id);
-  const { error } = await sb.from('items').delete().eq('id', id).eq('seller_name', myN);
-  if (error) throw error;
+
+  const hard = await sb.from('items').delete().eq('id', id).select('id');
+  if (hard.error) throw hard.error;
+  if (hard.data && hard.data.length > 0) return 'deleted';
+
+  const soft = await sb
+    .from('items')
+    .update({
+      title: '삭제된 상품',
+      description: DELETED_MARK,
+      emoji: '📦',
+      sold: true,
+    })
+    .eq('id', id)
+    .select('id');
+  if (soft.error) throw soft.error;
+  return 'hidden';
 }
 
 async function toggleLike(itemId) {
@@ -506,11 +552,13 @@ async function renderMain(q) {
 
 function cardH(i, liked) {
   const p = i.seller_name === myN ? myP : (i.seller_photo || '');
+  const photos = itemPhotoList(i.emoji);
   return `<div class="card" onclick="openDet('${i.id}')">
     ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
     ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
     <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
+    ${photos.length > 1 ? `<div class="photo-count">사진 ${photos.length}</div>` : ''}
     <div class="card-body">
       <div class="card-name">${i.title}</div>
       <div class="card-price">${i.price.toLocaleString()}원</div>
@@ -556,10 +604,10 @@ async function renderDet() {
   document.getElementById('s-det').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
-    <span class="sub-title">${it.category} ${isImg(it.emoji) ? '' : (it.emoji || '')}</span>
+    <span class="sub-title">${it.category} ${itemPhotoList(it.emoji).length ? '' : (it.emoji || '')}</span>
     ${!own ? `<div class="sub-right"><div class="hbtn${liked ? ' hbtn-pink' : ''}" id="_wbtn" onclick="doWishDet('${it.id}')">${liked ? '❤️' : '🤍'}</div></div>` : ''}
   </div>
-  <div class="det-img" style="background:${bgM[it.category] || '#F1EFE8'}">${itemMedia(it.emoji, it.category)}</div>
+  <div class="det-gallery">${itemGallery(it.emoji, it.category)}</div>
   <div class="det-content">
     <div class="det-price">${it.price.toLocaleString()}원</div>
     <div class="det-title">${it.title}</div>
@@ -807,7 +855,7 @@ function itemRowH(i) {
   const pt = i.sold ? 'sp-off' : 'sp-on';
   const ptxt = i.sold ? '판매완료' : '판매중';
   return `<div class="item-row" onclick="openDet('${i.id}')">
-    <div class="item-row-em">${i.emoji || '📦'}</div>
+    <div class="item-row-em">${itemMedia(i.emoji, i.category)}</div>
     <div class="item-row-info">
       <div class="item-row-name">${i.title}</div>
       <div class="item-row-price">${i.price.toLocaleString()}원</div>
@@ -826,7 +874,7 @@ function saveNick() {
    판매 등록
 ════════════════════════════════ */
 function renderSell() {
-  itemPhoto = '';
+  itemPhotos = [];
   document.getElementById('s-sell').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
@@ -847,9 +895,9 @@ function renderSell() {
 function renderItemPhotoZone() {
   const z = document.getElementById('_itemphoto');
   if (!z) return;
-  z.className = 'img-zone' + (itemPhoto ? ' has-img' : '');
-  z.innerHTML = itemPhoto
-    ? `<img src="${itemPhoto}" alt="상품 사진">`
+  z.className = 'img-zone' + (itemPhotos.length ? ' has-img' : '');
+  z.innerHTML = itemPhotos.length
+    ? itemPhotos.map((p, idx) => `<div class="photo-preview"><img src="${p}" alt="상품 사진 ${idx + 1}"></div>`).join('')
     : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
 }
 
@@ -862,7 +910,7 @@ async function doAddItem() {
   const btn = document.getElementById('_regbtn');
   btn.textContent = '등록 중...'; btn.disabled = true;
   try {
-    await insertItem({ title: t, price: p, category: c, emoji: itemPhoto || emM[c] || '📦', description: d });
+    await insertItem({ title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c), description: d });
     toast('상품이 등록됐어요 🎉');
     statF = '판매중'; catF = '전체';
     goBack();
