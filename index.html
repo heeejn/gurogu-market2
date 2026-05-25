@@ -28,15 +28,16 @@
     #app { width: 100%; max-width: 430px; height: 100dvh; margin: 0 auto; position: relative; overflow: hidden; background: var(--bg); }
 
     /* ─── 화면 전환 ─── */
-    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; }
+    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; z-index: 1; }
     .screen.right { transform: translateX(100%); }
-    .screen.left  { transform: translateX(-28%); }
-    .screen.active { transform: translateX(0); }
+    .screen.left  { transform: translateX(-100%); pointer-events: none; }
+    .screen.active { transform: translateX(0); z-index: 10; }
 
     /* ─── 헤더 ─── */
     .hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
     .logo { display: flex; align-items: center; gap: 9px; }
-    .logo-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: .5px solid var(--br2); flex-shrink: 0; }
+    .logo-mark { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #fff; display: flex; align-items: center; justify-content: center; }
+    .logo-img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.38); display: block; }
     .logo-name { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.3px; }
     .hdr-r { display: flex; gap: 6px; align-items: center; }
     .hbtn { display: flex; align-items: center; gap: 3px; border: .5px solid var(--br2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text2); font-family: inherit; -webkit-tap-highlight-color: transparent; transition: background .1s; }
@@ -74,7 +75,8 @@
     .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .card { background: var(--surface); border-radius: var(--r); border: .5px solid var(--br); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
     .card:active { opacity: .88; }
-    .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+    .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
+    .card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .card-body { padding: 8px 9px 10px; border-top: .5px solid var(--br); }
     .card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-price { font-size: 13px; font-weight: 800; color: var(--pink-dark); }
@@ -90,7 +92,8 @@
     .empty { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; grid-column: span 2; }
 
     /* ─── 상품 상세 ─── */
-    .det-img { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; }
+    .det-img { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; overflow: hidden; }
+    .det-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .det-content { background: var(--surface); padding: 14px; }
     .det-price { font-size: 22px; font-weight: 800; color: var(--pink-dark); margin-bottom: 3px; }
     .det-title { font-size: 15px; font-weight: 800; margin-bottom: 5px; }
@@ -108,6 +111,8 @@
     .wish-btn { background: var(--surface); border: .5px solid var(--br2); border-radius: 10px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
     .wish-btn.on { border-color: var(--pink-br); }
     .sold-tog { width: 100%; background: var(--bg); border: .5px solid var(--br2); color: var(--text2); border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
+    .del-item-btn { width: 100%; background: #FFF5F6; border: .5px solid #F2B8C2; color: #B4233B; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
+    .del-item-btn:disabled { opacity: .6; cursor: default; }
 
     /* ─── 댓글 ─── */
     .cmt-wrap { border-top: .5px solid var(--br); padding-top: 13px; }
@@ -164,7 +169,8 @@
     .my-body { padding: 10px 0 24px; }
     .item-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: .5px solid var(--br); padding: 11px 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .item-row:active { background: var(--bg); }
-    .item-row-em { font-size: 20px; width: 40px; height: 40px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .item-row-em { font-size: 20px; width: 40px; height: 40px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+    .item-row-em img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .item-row-info { flex: 1; min-width: 0; }
     .item-row-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .item-row-price { font-size: 12px; font-weight: 800; color: var(--pink-dark); margin-top: 1px; }
@@ -181,7 +187,9 @@
     .fr input, .fr select, .fr textarea { width: 100%; border: .5px solid var(--br2); border-radius: 10px; padding: 9px 11px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; resize: none; }
     .fr textarea { height: 80px; }
     .fr input:focus, .fr select:focus, .fr textarea:focus { outline: none; border-color: var(--pink); background: var(--surface); }
-    .img-zone { width: 100%; height: 72px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); }
+    .img-zone { width: 100%; height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
+    .img-zone.has-img { border-style: solid; padding: 0; background: var(--surface); }
+    .img-zone img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
     .reg-btn:active { background: var(--pink-dark); }
 
@@ -215,6 +223,7 @@
 
 <input type="file" id="f-init" accept="image/*" style="display:none">
 <input type="file" id="f-edit" accept="image/*" style="display:none">
+<input type="file" id="f-item" accept="image/*" style="display:none">
 
 <div id="app">
   <div id="s-nick" class="screen active"></div>
@@ -240,7 +249,9 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 /* ── 상태 ── */
 const emM = { 의류:'👗', 전자기기:'📱', 도서:'📚', 생활용품:'🏠', 취미:'🎮', 식물:'🌿', 기타:'📦' };
 const bgM = { 의류:'#FBEAF0', 전자기기:'#E6F1FB', 도서:'#FAEEDA', 생활용품:'#EAF3DE', 취미:'#EEEDFE', 식물:'#E1F5EE', 기타:'#F1EFE8' };
-let myN = '', myP = '';
+let myN = localStorage.getItem('gurogu_nickname') || '';
+let myP = localStorage.getItem('gurogu_profile_photo') || '';
+let itemPhoto = '';
 let catF = '전체', statF = '판매중';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
@@ -252,6 +263,20 @@ let userKey = localStorage.getItem('gurogu_userkey') || (() => {
 function av(p, n, s) {
   if (p) return `<img src="${p}" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;">`;
   return `<span style="font-size:${Math.round(s * .38)}px;font-weight:800;">${(n || '?')[0]}</span>`;
+}
+function logoImg() {
+  return '<span class="logo-mark"><img class="logo-img" src="gurogu-market-logo.webp" alt="구로구마켓 로고"></span>';
+}
+function isImg(v) {
+  return typeof v === 'string' && v.startsWith('data:image/');
+}
+function itemMedia(v, category) {
+  return isImg(v) ? `<img src="${v}" alt="">` : (v || emM[category] || '📦');
+}
+function saveProfile() {
+  if (myN) localStorage.setItem('gurogu_nickname', myN);
+  if (myP) localStorage.setItem('gurogu_profile_photo', myP);
+  else localStorage.removeItem('gurogu_profile_photo');
 }
 function relTime(ts) {
   const d = Math.floor((Date.now() - new Date(ts)) / 1000);
@@ -300,12 +325,19 @@ function readFile(file) {
 document.getElementById('f-init').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   myP = await readFile(f);
+  saveProfile();
   renderNick();
 });
 document.getElementById('f-edit').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   myP = await readFile(f);
+  saveProfile();
   renderMy(); toast('프로필 사진을 변경했어요 📸');
+});
+document.getElementById('f-item').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  itemPhoto = await readFile(f);
+  renderItemPhotoZone();
 });
 
 /* ════════════════════════════════
@@ -339,6 +371,13 @@ async function insertItem({ title, price, category, emoji, description }) {
 
 async function updateSoldStatus(id, sold) {
   await sb.from('items').update({ sold }).eq('id', id);
+}
+
+async function deleteItem(id) {
+  await sb.from('likes').delete().eq('item_id', id);
+  await sb.from('comments').delete().eq('item_id', id);
+  const { error } = await sb.from('items').delete().eq('id', id).eq('seller_name', myN);
+  if (error) throw error;
 }
 
 async function toggleLike(itemId) {
@@ -378,7 +417,7 @@ async function deleteComment(id) {
 function renderNick() {
   document.getElementById('s-nick').innerHTML = `
   <div class="hdr"><div class="logo">
-    <img class="logo-img" src="logo.png" alt="" onerror="this.style.display='none'">
+    ${logoImg()}
     <div class="logo-name">구로구마켓</div>
   </div></div>
   <div class="nick-screen"><div class="nick-box">
@@ -400,6 +439,7 @@ async function startApp() {
   const v = document.getElementById('_ni').value.trim();
   if (!v) { toast('닉네임을 입력해 주세요'); return; }
   myN = v;
+  saveProfile();
   await renderMain();
   goTo('s-main');
 }
@@ -418,7 +458,7 @@ async function renderMain(q) {
   document.getElementById('s-main').innerHTML = `
   <div class="hdr">
     <div class="logo">
-      <img class="logo-img" src="logo.png" alt="" onerror="this.style.display='none'">
+      ${logoImg()}
       <div class="logo-name">구로구마켓</div>
     </div>
     <div class="hdr-r">
@@ -470,7 +510,7 @@ function cardH(i, liked) {
     ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
     ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
-    <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${i.emoji || '📦'}</div>
+    <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
     <div class="card-body">
       <div class="card-name">${i.title}</div>
       <div class="card-price">${i.price.toLocaleString()}원</div>
@@ -516,10 +556,10 @@ async function renderDet() {
   document.getElementById('s-det').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
-    <span class="sub-title">${it.category} ${it.emoji || ''}</span>
+    <span class="sub-title">${it.category} ${isImg(it.emoji) ? '' : (it.emoji || '')}</span>
     ${!own ? `<div class="sub-right"><div class="hbtn${liked ? ' hbtn-pink' : ''}" id="_wbtn" onclick="doWishDet('${it.id}')">${liked ? '❤️' : '🤍'}</div></div>` : ''}
   </div>
-  <div class="det-img" style="background:${bgM[it.category] || '#F1EFE8'}">${it.emoji || '📦'}</div>
+  <div class="det-img" style="background:${bgM[it.category] || '#F1EFE8'}">${itemMedia(it.emoji, it.category)}</div>
   <div class="det-content">
     <div class="det-price">${it.price.toLocaleString()}원</div>
     <div class="det-title">${it.title}</div>
@@ -533,7 +573,8 @@ async function renderDet() {
       <div class="det-sname">${it.seller_name} 님</div>
       <div class="det-time">${relTime(it.created_at)}</div>
     </div>
-    ${own ? `<button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>` : ''}
+    ${own ? `<button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>
+             <button class="del-item-btn" id="_delitem" onclick="doDeleteItem()">🗑 상품 삭제</button>` : ''}
     ${!own ? `<div class="det-acts">
       <button class="wish-btn${liked ? ' on' : ''}" id="_wb2" onclick="doWishDet('${it.id}')">${liked ? '❤️' : '🤍'}</button>
       <button class="chat-btn" onclick="toast('💬 ${it.seller_name}님에게 채팅을 보냈어요!')">
@@ -659,6 +700,31 @@ async function doToggleSold() {
   toast(curItem.sold ? '판매완료로 변경했어요' : '판매중으로 변경했어요');
 }
 
+async function doDeleteItem() {
+  if (!curId || !curItem) return;
+  if (curItem.seller_name !== myN) {
+    toast('내 상품만 삭제할 수 있어요');
+    return;
+  }
+  if (!confirm('이 상품을 삭제할까요? 댓글과 찜 기록도 함께 삭제돼요.')) return;
+
+  const btn = document.getElementById('_delitem');
+  if (btn) { btn.textContent = '삭제 중...'; btn.disabled = true; }
+
+  try {
+    await deleteItem(curId);
+    cachedItems = cachedItems.filter(i => i.id !== curId);
+    curId = null;
+    curItem = null;
+    toast('상품을 삭제했어요');
+    goBack();
+  } catch (e) {
+    console.error(e);
+    toast('삭제에 실패했어요. 다시 시도해 주세요.');
+    if (btn) { btn.textContent = '🗑 상품 삭제'; btn.disabled = false; }
+  }
+}
+
 async function doWishDet(itemId) {
   const liked = await toggleLike(itemId);
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
@@ -753,20 +819,21 @@ function itemRowH(i) {
 
 function saveNick() {
   const v = document.getElementById('_nei').value.trim(); if (!v) return;
-  myN = v; renderMy(); toast('닉네임을 변경했어요');
+  myN = v; saveProfile(); renderMy(); toast('닉네임을 변경했어요');
 }
 
 /* ════════════════════════════════
    판매 등록
 ════════════════════════════════ */
 function renderSell() {
+  itemPhoto = '';
   document.getElementById('s-sell').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
     <span class="sub-title">물건 올리기</span>
   </div>
   <div class="sell-body">
-    <div class="fr"><label>사진</label><div class="img-zone"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
+    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto" onclick="document.getElementById('f-item').click()"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
     <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름"></div>
     <div class="fr"><label>카테고리</label>
       <select id="_nc"><option>의류</option><option>전자기기</option><option>도서</option><option>생활용품</option><option>취미</option><option>식물</option><option>기타</option></select>
@@ -775,6 +842,15 @@ function renderSell() {
     <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요"></textarea></div>
     <button class="reg-btn" id="_regbtn" onclick="doAddItem()">등록하기</button>
   </div>`;
+}
+
+function renderItemPhotoZone() {
+  const z = document.getElementById('_itemphoto');
+  if (!z) return;
+  z.className = 'img-zone' + (itemPhoto ? ' has-img' : '');
+  z.innerHTML = itemPhoto
+    ? `<img src="${itemPhoto}" alt="상품 사진">`
+    : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
 }
 
 async function doAddItem() {
@@ -786,7 +862,7 @@ async function doAddItem() {
   const btn = document.getElementById('_regbtn');
   btn.textContent = '등록 중...'; btn.disabled = true;
   try {
-    await insertItem({ title: t, price: p, category: c, emoji: emM[c] || '📦', description: d });
+    await insertItem({ title: t, price: p, category: c, emoji: itemPhoto || emM[c] || '📦', description: d });
     toast('상품이 등록됐어요 🎉');
     statF = '판매중'; catF = '전체';
     goBack();
@@ -798,7 +874,14 @@ async function doAddItem() {
 }
 
 /* ── 시작 ── */
-renderNick();
+if (myN) {
+  renderMain();
+  document.getElementById('s-nick').className = 'screen right';
+  document.getElementById('s-main').className = 'screen active';
+  screenHistory = ['s-main'];
+} else {
+  renderNick();
+}
 </script>
 </body>
 </html>
