@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>구로구마켓</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ─── 리셋 & 기본 ─── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --pink: #D4537E; --pink-dark: #993556;
+      --pink-bg: #FBEAF0; --pink-br: #ED93B1;
+      --pur-bg: #EEEDFE; --pur: #534AB7; --pur-br: #AFA9EC; --pur-dark: #26215C;
+      --teal-bg: #E1F5EE; --teal: #1D9E75; --teal-dark: #085041; --teal-br: #9FE1CB;
+      --bg: #F7F8FA; --surface: #fff;
+      --text: #1A1A2E; --text2: #4A5068; --text3: #9BA3B8;
+      --br: #E8EAF0; --br2: #D0D5E8;
+      --r: 14px;
+    }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'Nanum Gothic', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    /* ─── 앱 래퍼 ─── */
+    #app { width: 100%; max-width: 430px; height: 100dvh; margin: 0 auto; position: relative; overflow: hidden; background: var(--bg); }
+
+    /* ─── 화면 전환 ─── */
+    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; }
+    .screen.right { transform: translateX(100%); }
+    .screen.left  { transform: translateX(-28%); }
+    .screen.active { transform: translateX(0); }
+
+    /* ─── 헤더 ─── */
+    .hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
+    .logo { display: flex; align-items: center; gap: 9px; }
+    .logo-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: .5px solid var(--br2); flex-shrink: 0; }
+    .logo-name { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.3px; }
+    .hdr-r { display: flex; gap: 6px; align-items: center; }
+    .hbtn { display: flex; align-items: center; gap: 3px; border: .5px solid var(--br2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text2); font-family: inherit; -webkit-tap-highlight-color: transparent; transition: background .1s; }
+    .hbtn:active { background: var(--bg); }
+    .hbtn-pink { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
+    .pill { display: flex; align-items: center; gap: 5px; background: var(--pur-bg); color: var(--pur-dark); border: .5px solid var(--pur-br); border-radius: 999px; padding: 4px 11px 4px 4px; font-size: 11px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .pill-av { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; background: var(--pur); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0; }
+    .pill-av img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ─── 서브 헤더 ─── */
+    .sub-hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; gap: 10px; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
+    .back-btn { width: 32px; height: 32px; background: var(--bg); border: .5px solid var(--br); border-radius: 999px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .sub-title { font-size: 15px; font-weight: 800; flex: 1; }
+    .sub-right { display: flex; gap: 6px; }
+
+    /* ─── 히어로 ─── */
+    .hero { background: var(--surface); padding: 14px 14px 13px; border-bottom: .5px solid var(--br); }
+    .hero p { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 12px; }
+    .search-row { display: flex; gap: 7px; }
+    .search-row input { flex: 1; height: 38px; border: .5px solid var(--br2); border-radius: 10px; padding: 0 12px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; }
+    .search-row input:focus { outline: none; border-color: var(--pink); }
+    .search-row button { height: 38px; padding: 0 14px; background: var(--pink); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; }
+
+    /* ─── 필터 / 탭 ─── */
+    .filter-bar { display: flex; gap: 6px; padding: 10px 14px; background: var(--surface); border-bottom: .5px solid var(--br); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .chip { padding: 5px 13px; border-radius: 999px; border: .5px solid var(--br); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    .chip.on { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
+    .stat-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); }
+    .stab { flex: 1; text-align: center; padding: 9px 0; font-size: 13px; font-weight: 700; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; -webkit-tap-highlight-color: transparent; }
+    .stab.on { color: var(--pink-dark); border-bottom-color: var(--pink); }
+
+    /* ─── 그리드 ─── */
+    .content { padding: 12px 14px 24px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .card { background: var(--surface); border-radius: var(--r); border: .5px solid var(--br); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+    .card:active { opacity: .88; }
+    .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+    .card-body { padding: 8px 9px 10px; border-top: .5px solid var(--br); }
+    .card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-price { font-size: 13px; font-weight: 800; color: var(--pink-dark); }
+    .card-sub { font-size: 10px; color: var(--text3); margin-top: 5px; display: flex; align-items: center; justify-content: space-between; }
+    .card-sub-l { display: flex; align-items: center; gap: 3px; }
+    .card-sub-r { display: flex; align-items: center; gap: 6px; }
+    .card-stat { display: flex; align-items: center; gap: 2px; }
+    .mini-av { width: 13px; height: 13px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: 800; color: var(--pur); }
+    .mini-av img { width: 100%; height: 100%; object-fit: cover; }
+    .heart-btn { position: absolute; top: 6px; right: 6px; background: var(--surface); border: .5px solid var(--br); border-radius: 999px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; -webkit-tap-highlight-color: transparent; }
+    .sold-badge { position: absolute; top: 6px; left: 6px; background: rgba(20,20,40,.55); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
+    .mine-badge { position: absolute; top: 6px; left: 6px; background: var(--pink); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
+    .empty { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; grid-column: span 2; }
+
+    /* ─── 상품 상세 ─── */
+    .det-img { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; }
+    .det-content { background: var(--surface); padding: 14px; }
+    .det-price { font-size: 22px; font-weight: 800; color: var(--pink-dark); margin-bottom: 3px; }
+    .det-title { font-size: 15px; font-weight: 800; margin-bottom: 5px; }
+    .det-stats { display: flex; gap: 12px; margin-bottom: 8px; }
+    .det-stat { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text3); font-weight: 700; }
+    .det-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; }
+    .det-seller { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; padding: 10px 12px; background: var(--bg); border-radius: 10px; border: .5px solid var(--br); }
+    .det-sav { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--pur-dark); flex-shrink: 0; }
+    .det-sav img { width: 100%; height: 100%; object-fit: cover; }
+    .det-sname { font-size: 12px; font-weight: 800; }
+    .det-time { font-size: 11px; color: var(--text3); margin-left: auto; }
+    .det-acts { display: flex; gap: 8px; margin-bottom: 13px; }
+    .chat-btn { flex: 1; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    .chat-btn:active { background: var(--pink-dark); }
+    .wish-btn { background: var(--surface); border: .5px solid var(--br2); border-radius: 10px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .wish-btn.on { border-color: var(--pink-br); }
+    .sold-tog { width: 100%; background: var(--bg); border: .5px solid var(--br2); color: var(--text2); border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
+
+    /* ─── 댓글 ─── */
+    .cmt-wrap { border-top: .5px solid var(--br); padding-top: 13px; }
+    .cmt-head { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+    .cmt-form { display: flex; gap: 6px; margin-bottom: 11px; }
+    .cmt-inp { flex: 1; height: 38px; border: .5px solid var(--br2); border-radius: 10px; padding: 0 12px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg); }
+    .cmt-inp:focus { outline: none; border-color: var(--pink); }
+    .cmt-post { background: var(--pink-bg); color: var(--pink-dark); border: .5px solid var(--pink-br); border-radius: 10px; padding: 0 13px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .cmt-list { display: flex; flex-direction: column; gap: 7px; }
+    .cmt-item { background: var(--bg); border-radius: 10px; padding: 9px 11px; border: .5px solid var(--br); }
+    .cmt-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .cmt-av { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: var(--pur); }
+    .cmt-av img { width: 100%; height: 100%; object-fit: cover; }
+    .cmt-nick { font-size: 12px; font-weight: 800; color: var(--pink-dark); }
+    .cmt-time { font-size: 10px; color: var(--text3); margin-left: auto; }
+    .cmt-text { font-size: 13px; line-height: 1.5; margin-bottom: 6px; }
+    .cmt-acts { display: flex; gap: 8px; }
+    .ca { background: none; border: none; font-size: 11px; color: var(--text3); cursor: pointer; padding: 0; font-family: inherit; font-weight: 700; }
+    .ca:active { color: var(--pink-dark); }
+    .rep-form { display: flex; gap: 5px; margin-top: 8px; }
+    .rep-inp { flex: 1; height: 32px; border: .5px solid var(--br2); border-radius: 8px; padding: 0 10px; font-size: 12px; font-family: inherit; color: var(--text); background: var(--surface); }
+    .rep-inp:focus { outline: none; border-color: var(--teal); }
+    .rep-post { background: var(--teal-bg); color: var(--teal-dark); border: .5px solid var(--teal-br); border-radius: 8px; padding: 0 11px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .replies { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+    .rep-item { background: var(--surface); border-radius: 8px; padding: 7px 10px; border: .5px solid var(--br); margin-left: 12px; }
+    .rep-nick { font-size: 11px; font-weight: 800; color: var(--teal-dark); }
+    .rep-text { font-size: 12px; margin-top: 2px; }
+    .rep-acts { display: flex; gap: 6px; margin-top: 4px; }
+    .ei { width: 100%; height: 28px; border: .5px solid var(--br2); border-radius: 6px; padding: 0 9px; font-size: 12px; font-family: inherit; color: var(--text); margin-bottom: 4px; background: var(--surface); }
+
+    /* ─── 마이페이지 ─── */
+    .prof-card { margin: 12px 14px; background: var(--pur-bg); border: .5px solid var(--pur-br); border-radius: var(--r); padding: 14px; display: flex; align-items: center; gap: 12px; }
+    .prof-av-wrap { position: relative; flex-shrink: 0; cursor: pointer; }
+    .prof-av { width: 52px; height: 52px; border-radius: 50%; background: var(--pur); overflow: hidden; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: #fff; }
+    .prof-av img { width: 100%; height: 100%; object-fit: cover; }
+    .prof-cam { position: absolute; bottom: 0; right: 0; width: 18px; height: 18px; background: var(--pink); border-radius: 50%; border: 1.5px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #fff; }
+    .prof-info h3 { font-size: 14px; font-weight: 800; color: var(--pur-dark); }
+    .prof-info p { font-size: 11px; color: var(--pur); margin-top: 1px; }
+    .edit-nick-btn { margin-left: auto; background: var(--surface); border: .5px solid var(--pur-br); border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--pur-dark); font-family: inherit; }
+    .edit-form { display: none; margin: 0 14px 10px; background: var(--surface); border: .5px solid var(--br); border-radius: 12px; padding: 11px 12px; }
+    .edit-form.open { display: block; }
+    .edit-label { font-size: 11px; font-weight: 800; color: var(--text2); margin-bottom: 5px; }
+    .edit-row { display: flex; gap: 6px; }
+    .edit-row input { flex: 1; height: 34px; border: .5px solid var(--br2); border-radius: 8px; padding: 0 10px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg); }
+    .edit-row input:focus { outline: none; border-color: var(--pink); }
+    .save-btn { background: var(--pink); color: #fff; border: none; border-radius: 8px; height: 34px; padding: 0 13px; font-size: 13px; font-weight: 800; cursor: pointer; }
+    .stats { display: flex; gap: 7px; padding: 0 14px 12px; }
+    .stat { flex: 1; background: var(--surface); border: .5px solid var(--br); border-radius: 12px; padding: 10px; text-align: center; }
+    .stat-n { font-size: 18px; font-weight: 800; color: var(--pink-dark); }
+    .stat-l { font-size: 10px; color: var(--text3); font-weight: 700; margin-top: 2px; }
+    .my-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); }
+    .my-tab { flex: 1; text-align: center; padding: 10px 0; font-size: 12px; font-weight: 700; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; -webkit-tap-highlight-color: transparent; }
+    .my-tab.on { color: var(--pink-dark); border-bottom-color: var(--pink); }
+    .my-body { padding: 10px 0 24px; }
+    .item-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-bottom: .5px solid var(--br); padding: 11px 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .item-row:active { background: var(--bg); }
+    .item-row-em { font-size: 20px; width: 40px; height: 40px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .item-row-info { flex: 1; min-width: 0; }
+    .item-row-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-row-price { font-size: 12px; font-weight: 800; color: var(--pink-dark); margin-top: 1px; }
+    .item-row-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .status-pill { font-size: 10px; padding: 3px 9px; border-radius: 999px; font-weight: 700; flex-shrink: 0; }
+    .sp-on { background: var(--teal-bg); color: var(--teal-dark); }
+    .sp-off { background: var(--bg); color: var(--text3); border: .5px solid var(--br); }
+    .empty-my { text-align: center; padding: 40px 14px; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; }
+
+    /* ─── 판매 등록 ─── */
+    .sell-body { padding: 14px; }
+    .fr { margin-bottom: 10px; }
+    .fr label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
+    .fr input, .fr select, .fr textarea { width: 100%; border: .5px solid var(--br2); border-radius: 10px; padding: 9px 11px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; resize: none; }
+    .fr textarea { height: 80px; }
+    .fr input:focus, .fr select:focus, .fr textarea:focus { outline: none; border-color: var(--pink); background: var(--surface); }
+    .img-zone { width: 100%; height: 72px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); }
+    .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
+    .reg-btn:active { background: var(--pink-dark); }
+
+    /* ─── 닉네임 설정 ─── */
+    .nick-screen { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px 14px; }
+    .nick-box { background: var(--surface); border-radius: 20px; width: 100%; max-width: 320px; padding: 28px 22px; text-align: center; border: .5px solid var(--br); }
+    .nick-emoji { font-size: 34px; margin-bottom: 10px; }
+    .nick-box h2 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .nick-box p { font-size: 12px; color: var(--text3); margin-bottom: 18px; }
+    .av-pick { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 16px; }
+    .av-circle { width: 66px; height: 66px; border-radius: 50%; background: var(--pur-bg); border: 1.5px dashed var(--pur-br); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
+    .av-circle img { width: 100%; height: 100%; object-fit: cover; }
+    .av-hint { font-size: 11px; color: var(--text3); font-weight: 700; }
+    .nick-input { width: 100%; height: 42px; border: .5px solid var(--br2); border-radius: 10px; text-align: center; font-size: 14px; font-family: inherit; color: var(--text); background: var(--bg); margin-bottom: 12px; }
+    .nick-input:focus { outline: none; border-color: var(--pink); }
+    .nick-start { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 44px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+    .nick-start:active { background: var(--pink-dark); }
+
+    /* ─── 로딩 ─── */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 40px 0; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; grid-column: span 2; }
+    .spin { width: 18px; height: 18px; border: 2px solid var(--br2); border-top-color: var(--pink); border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── 토스트 ─── */
+    .toast-wrap { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 999; pointer-events: none; }
+    .toast { background: var(--text); color: #fff; font-size: 12px; font-weight: 700; padding: 9px 18px; border-radius: 999px; font-family: inherit; white-space: nowrap; opacity: 0; transform: translateY(16px); transition: opacity .25s, transform .25s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<input type="file" id="f-init" accept="image/*" style="display:none">
+<input type="file" id="f-edit" accept="image/*" style="display:none">
+
+<div id="app">
+  <div id="s-nick" class="screen active"></div>
+  <div id="s-main" class="screen right"></div>
+  <div id="s-det"  class="screen right"></div>
+  <div id="s-my"   class="screen right"></div>
+  <div id="s-sell" class="screen right"></div>
+</div>
+
+<div class="toast-wrap"><div id="toast" class="toast"></div></div>
+
+<script>
+/* ════════════════════════════════
+   ⚙️  여기에 Supabase 정보 입력
+════════════════════════════════ */
+const SUPABASE_URL = 'https://mgexlhhhtskpfiukzwae.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
+
+/* ── Supabase 초기화 ── */
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ── 상태 ── */
+const emM = { 의류:'👗', 전자기기:'📱', 도서:'📚', 생활용품:'🏠', 취미:'🎮', 식물:'🌿', 기타:'📦' };
+const bgM = { 의류:'#FBEAF0', 전자기기:'#E6F1FB', 도서:'#FAEEDA', 생활용품:'#EAF3DE', 취미:'#EEEDFE', 식물:'#E1F5EE', 기타:'#F1EFE8' };
+let myN = '', myP = '';
+let catF = '전체', statF = '판매중';
+let curId = null, myTab = 'selling';
+let screenHistory = ['s-nick'];
+let userKey = localStorage.getItem('gurogu_userkey') || (() => {
+  const k = crypto.randomUUID(); localStorage.setItem('gurogu_userkey', k); return k;
+})();
+
+/* ── 유틸 ── */
+function av(p, n, s) {
+  if (p) return `<img src="${p}" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;">`;
+  return `<span style="font-size:${Math.round(s * .38)}px;font-weight:800;">${(n || '?')[0]}</span>`;
+}
+function relTime(ts) {
+  const d = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (d < 60) return '방금';
+  if (d < 3600) return Math.floor(d / 60) + '분 전';
+  if (d < 86400) return Math.floor(d / 3600) + '시간 전';
+  return Math.floor(d / 86400) + '일 전';
+}
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ── 화면 전환 ── */
+const allScreens = ['s-nick', 's-main', 's-det', 's-my', 's-sell'];
+function goTo(id) {
+  const cur = screenHistory[screenHistory.length - 1];
+  if (cur === id) return;
+  document.getElementById(cur).className = 'screen left';
+  document.getElementById(id).className = 'screen active';
+  allScreens.filter(s => s !== cur && s !== id).forEach(s => {
+    document.getElementById(s).className = 'screen right';
+  });
+  screenHistory.push(id);
+}
+function goBack() {
+  if (screenHistory.length <= 1) return;
+  const cur = screenHistory.pop();
+  const prev = screenHistory[screenHistory.length - 1];
+  document.getElementById(cur).className = 'screen right';
+  document.getElementById(prev).className = 'screen active';
+  if (prev === 's-main') renderMain();
+  if (prev === 's-my') renderMy();
+}
+
+/* ── 파일 업로드 → Base64 ── */
+function readFile(file) {
+  return new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.readAsDataURL(file);
+  });
+}
+document.getElementById('f-init').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  myP = await readFile(f);
+  renderNick();
+});
+document.getElementById('f-edit').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  myP = await readFile(f);
+  renderMy(); toast('프로필 사진을 변경했어요 📸');
+});
+
+/* ════════════════════════════════
+   Supabase 데이터 함수
+════════════════════════════════ */
+async function fetchItems() {
+  const { data, error } = await sb
+    .from('items')
+    .select('*, likes(count)')
+    .order('created_at', { ascending: false });
+  if (error) { console.error(error); return []; }
+  return data.map(i => ({ ...i, likeCount: i.likes[0]?.count || 0 }));
+}
+
+async function fetchComments(itemId) {
+  const { data } = await sb
+    .from('comments')
+    .select('*')
+    .eq('item_id', itemId)
+    .order('created_at', { ascending: true });
+  return data || [];
+}
+
+async function insertItem({ title, price, category, emoji, description }) {
+  const { error } = await sb.from('items').insert({
+    title, price, category, emoji, description,
+    seller_name: myN, seller_photo: myP,
+  });
+  if (error) throw error;
+}
+
+async function updateSoldStatus(id, sold) {
+  await sb.from('items').update({ sold }).eq('id', id);
+}
+
+async function toggleLike(itemId) {
+  const { data } = await sb.from('likes').select('id').eq('item_id', itemId).eq('user_key', userKey);
+  if (data && data.length > 0) {
+    await sb.from('likes').delete().eq('item_id', itemId).eq('user_key', userKey);
+    return false;
+  } else {
+    await sb.from('likes').insert({ item_id: itemId, user_key: userKey });
+    return true;
+  }
+}
+
+async function isLiked(itemId) {
+  const { data } = await sb.from('likes').select('id').eq('item_id', itemId).eq('user_key', userKey);
+  return data && data.length > 0;
+}
+
+async function insertComment(itemId, content, parentId = null) {
+  await sb.from('comments').insert({
+    item_id: itemId, parent_id: parentId,
+    author_name: myN, author_photo: myP, content,
+  });
+}
+
+async function updateComment(id, content) {
+  await sb.from('comments').update({ content }).eq('id', id);
+}
+
+async function deleteComment(id) {
+  await sb.from('comments').delete().eq('id', id);
+}
+
+/* ════════════════════════════════
+   닉네임 설정 화면
+════════════════════════════════ */
+function renderNick() {
+  document.getElementById('s-nick').innerHTML = `
+  <div class="hdr"><div class="logo">
+    <img class="logo-img" src="logo.png" alt="" onerror="this.style.display='none'">
+    <div class="logo-name">구로구마켓</div>
+  </div></div>
+  <div class="nick-screen"><div class="nick-box">
+    <div class="nick-emoji">🛍️</div>
+    <h2>구로구마켓에 오셨군요!</h2>
+    <p>닉네임과 프로필 사진을 설정해 주세요</p>
+    <div class="av-pick">
+      <div class="av-circle" onclick="document.getElementById('f-init').click()">
+        ${myP ? `<img src="${myP}" style="width:66px;height:66px;object-fit:cover;">` : `<i class="ti ti-camera" style="font-size:22px;color:#AFA9EC;" aria-hidden="true"></i>`}
+      </div>
+      <span class="av-hint">사진 추가 (선택)</span>
+    </div>
+    <input class="nick-input" type="text" id="_ni" placeholder="닉네임 입력" maxlength="10" onkeydown="if(event.key==='Enter')startApp()">
+    <button class="nick-start" onclick="startApp()">시작하기 ✨</button>
+  </div></div>`;
+}
+
+async function startApp() {
+  const v = document.getElementById('_ni').value.trim();
+  if (!v) { toast('닉네임을 입력해 주세요'); return; }
+  myN = v;
+  await renderMain();
+  goTo('s-main');
+}
+
+/* ════════════════════════════════
+   메인 화면
+════════════════════════════════ */
+let cachedItems = [];
+
+async function renderMain(q) {
+  q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
+  const cats = ['전체', '의류', '전자기기', '도서', '생활용품', '취미', '식물', '기타'];
+  const cEm = { 의류:'👗', 전자기기:'📱', 도서:'📚', 생활용품:'🏠', 취미:'🎮', 식물:'🌿', 기타:'📦' };
+  const stats = ['판매중', '판매완료', '전체'];
+
+  document.getElementById('s-main').innerHTML = `
+  <div class="hdr">
+    <div class="logo">
+      <img class="logo-img" src="logo.png" alt="" onerror="this.style.display='none'">
+      <div class="logo-name">구로구마켓</div>
+    </div>
+    <div class="hdr-r">
+      <div class="pill" onclick="renderMy();goTo('s-my')">
+        <div class="pill-av">${av(myP, myN, 22)}</div>
+        <span>${myN}</span>
+      </div>
+      <div class="hbtn hbtn-pink" onclick="renderSell();goTo('s-sell')">+ 팔기</div>
+    </div>
+  </div>
+  <div class="hero">
+    <p>안 쓰는 물건에게 새 주인을 찾아주세요!</p>
+    <p>뜻밖의 득템이 기다리는 구로구마켓 👀</p>
+    <div style="height:12px;"></div>
+    <div class="search-row">
+      <input type="text" id="_sq" placeholder="어떤 물건을 찾고 계세요?" value="${q}" oninput="renderMain(this.value)">
+      <button onclick="renderMain(document.getElementById('_sq').value)">검색</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" onclick="catF='${c}';renderMain()">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
+  </div>
+  <div class="stat-tabs">
+    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';renderMain()">${s}</div>`).join('')}
+  </div>
+  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
+
+  const items = await fetchItems();
+  cachedItems = items;
+
+  const likedSet = new Set();
+  await Promise.all(items.map(async i => { if (await isLiked(i.id)) likedSet.add(i.id); }));
+
+  let list = items.filter(i => {
+    const mc = catF === '전체' || i.category === catF;
+    const ms = statF === '전체' || (statF === '판매중' && !i.sold) || (statF === '판매완료' && i.sold);
+    const mq = !q || i.title.includes(q);
+    return mc && ms && mq;
+  });
+
+  document.querySelector('#s-main .grid').innerHTML = list.length
+    ? list.map(i => cardH(i, likedSet.has(i.id))).join('')
+    : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
+}
+
+function cardH(i, liked) {
+  const p = i.seller_name === myN ? myP : (i.seller_photo || '');
+  return `<div class="card" onclick="openDet('${i.id}')">
+    ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
+    ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
+    <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
+    <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${i.emoji || '📦'}</div>
+    <div class="card-body">
+      <div class="card-name">${i.title}</div>
+      <div class="card-price">${i.price.toLocaleString()}원</div>
+      <div class="card-sub">
+        <div class="card-sub-l"><div class="mini-av">${av(p, i.seller_name, 13)}</div><span>${i.seller_name}</span></div>
+        <div class="card-sub-r">
+          <div class="card-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:10px;"></i>${i.likeCount}</div>
+          <div class="card-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:10px;"></i>${i.comment_count || 0}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function doToggleLike(itemId, btn) {
+  const liked = await toggleLike(itemId);
+  btn.textContent = liked ? '❤️' : '🤍';
+  toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
+}
+
+/* ════════════════════════════════
+   상품 상세 화면
+════════════════════════════════ */
+let curItem = null;
+
+async function openDet(id) {
+  curId = id;
+  curItem = cachedItems.find(i => i.id === id);
+  if (!curItem) {
+    const { data } = await sb.from('items').select('*, likes(count)').eq('id', id).single();
+    curItem = { ...data, likeCount: data.likes[0]?.count || 0 };
+  }
+  await renderDet();
+  goTo('s-det');
+}
+
+async function renderDet() {
+  const it = curItem;
+  const p = it.seller_name === myN ? myP : (it.seller_photo || '');
+  const own = it.seller_name === myN;
+  const liked = await isLiked(it.id);
+
+  document.getElementById('s-det').innerHTML = `
+  <div class="sub-hdr">
+    <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
+    <span class="sub-title">${it.category} ${it.emoji || ''}</span>
+    ${!own ? `<div class="sub-right"><div class="hbtn${liked ? ' hbtn-pink' : ''}" id="_wbtn" onclick="doWishDet('${it.id}')">${liked ? '❤️' : '🤍'}</div></div>` : ''}
+  </div>
+  <div class="det-img" style="background:${bgM[it.category] || '#F1EFE8'}">${it.emoji || '📦'}</div>
+  <div class="det-content">
+    <div class="det-price">${it.price.toLocaleString()}원</div>
+    <div class="det-title">${it.title}</div>
+    <div class="det-stats">
+      <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> ${it.likeCount}</div>
+      <div class="det-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;"></i> 댓글 <span id="_cmt-cnt">0</span></div>
+    </div>
+    <div class="det-desc">${it.description || ''}</div>
+    <div class="det-seller">
+      <div class="det-sav">${av(p, it.seller_name, 28)}</div>
+      <div class="det-sname">${it.seller_name} 님</div>
+      <div class="det-time">${relTime(it.created_at)}</div>
+    </div>
+    ${own ? `<button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>` : ''}
+    ${!own ? `<div class="det-acts">
+      <button class="wish-btn${liked ? ' on' : ''}" id="_wb2" onclick="doWishDet('${it.id}')">${liked ? '❤️' : '🤍'}</button>
+      <button class="chat-btn" onclick="toast('💬 ${it.seller_name}님에게 채팅을 보냈어요!')">
+        <i class="ti ti-message-circle" aria-hidden="true" style="font-size:15px;"></i> 채팅으로 문의하기
+      </button>
+    </div>` : ''}
+    <div class="cmt-wrap">
+      <div class="cmt-head">댓글</div>
+      <div class="cmt-form">
+        <input class="cmt-inp" id="_dci" type="text" placeholder="댓글을 남겨 보세요" maxlength="200">
+        <button class="cmt-post" onclick="doAddCmt()">등록</button>
+      </div>
+      <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+  </div>`;
+
+  await loadComments();
+}
+
+async function loadComments() {
+  const cmts = await fetchComments(curId);
+  const roots = cmts.filter(c => !c.parent_id);
+  const replies = cmts.filter(c => c.parent_id);
+  const cnt = document.getElementById('_cmt-cnt');
+  if (cnt) cnt.textContent = cmts.length;
+  document.getElementById('_dcl').innerHTML = roots.length
+    ? roots.map(c => cmtHTML(c, replies.filter(r => r.parent_id === c.id))).join('')
+    : '<p style="font-size:13px;color:var(--text3);font-weight:700;">첫 댓글을 남겨보세요!</p>';
+}
+
+function cmtHTML(c, reps) {
+  const isMine = c.author_name === myN;
+  return `<div class="cmt-item" id="cmt-${c.id}">
+    <div class="cmt-top">
+      <div class="cmt-av">${av(c.author_photo, c.author_name, 22)}</div>
+      <span class="cmt-nick">${c.author_name}</span>
+      <span class="cmt-time">${relTime(c.created_at)}</span>
+    </div>
+    <div class="cmt-text" id="ctxt-${c.id}">${c.content}</div>
+    <div class="cmt-acts">
+      <button class="ca" onclick="toggleRepForm('${c.id}')">↩ 답글</button>
+      ${isMine ? `<button class="ca" onclick="startEditCmt('${c.id}','${c.content.replace(/'/g,"\\'")}')">수정</button>
+                  <button class="ca" onclick="doDelCmt('${c.id}')">삭제</button>` : ''}
+    </div>
+    <div id="rep-form-${c.id}" style="display:none;" class="rep-form">
+      <input class="rep-inp" id="ri-${c.id}" type="text" placeholder="답글 입력" maxlength="200">
+      <button class="rep-post" onclick="doAddRep('${c.id}')">등록</button>
+    </div>
+    ${reps.length ? `<div class="replies">${reps.map(r => repHTML(r)).join('')}</div>` : ''}
+  </div>`;
+}
+
+function repHTML(r) {
+  const isMine = r.author_name === myN;
+  return `<div class="rep-item" id="cmt-${r.id}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+      <div style="display:flex;align-items:center;gap:5px;">
+        <div class="cmt-av">${av(r.author_photo, r.author_name, 18)}</div>
+        <span class="rep-nick">${r.author_name}</span>
+      </div>
+      <span style="font-size:10px;color:var(--text3);">${relTime(r.created_at)}</span>
+    </div>
+    <div class="rep-text" id="ctxt-${r.id}">${r.content}</div>
+    ${isMine ? `<div class="rep-acts">
+      <button class="ca" onclick="startEditCmt('${r.id}','${r.content.replace(/'/g,"\\'")}')">수정</button>
+      <button class="ca" onclick="doDelCmt('${r.id}')">삭제</button>
+    </div>` : ''}
+  </div>`;
+}
+
+function toggleRepForm(cid) {
+  const f = document.getElementById('rep-form-' + cid);
+  f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+  if (f.style.display === 'flex') document.getElementById('ri-' + cid)?.focus();
+}
+
+function startEditCmt(id, oldText) {
+  const txtEl = document.getElementById('ctxt-' + id);
+  if (!txtEl) return;
+  txtEl.innerHTML = `<div style="display:flex;gap:5px;margin-top:4px;">
+    <input class="rep-inp" id="edit-inp-${id}" value="${oldText}" style="flex:1;height:32px;">
+    <button class="rep-post" onclick="doSaveCmt('${id}')">저장</button>
+    <button class="ca" onclick="loadComments()">취소</button>
+  </div>`;
+  document.getElementById('edit-inp-' + id)?.focus();
+}
+
+async function doAddCmt() {
+  const inp = document.getElementById('_dci');
+  const v = inp.value.trim(); if (!v) return;
+  inp.value = '';
+  await insertComment(curId, v);
+  await loadComments();
+}
+
+async function doAddRep(parentId) {
+  const inp = document.getElementById('ri-' + parentId);
+  const v = inp?.value.trim(); if (!v) return;
+  await insertComment(curId, v, parentId);
+  await loadComments();
+}
+
+async function doSaveCmt(id) {
+  const inp = document.getElementById('edit-inp-' + id);
+  const v = inp?.value.trim(); if (!v) return;
+  await updateComment(id, v);
+  toast('댓글을 수정했어요');
+  await loadComments();
+}
+
+async function doDelCmt(id) {
+  if (!confirm('댓글을 삭제할까요?')) return;
+  await deleteComment(id);
+  toast('댓글을 삭제했어요');
+  await loadComments();
+}
+
+async function doToggleSold() {
+  curItem.sold = !curItem.sold;
+  await updateSoldStatus(curId, curItem.sold);
+  const btn = document.getElementById('_stog');
+  if (btn) btn.textContent = curItem.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경';
+  toast(curItem.sold ? '판매완료로 변경했어요' : '판매중으로 변경했어요');
+}
+
+async function doWishDet(itemId) {
+  const liked = await toggleLike(itemId);
+  toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
+  const b1 = document.getElementById('_wbtn');
+  const b2 = document.getElementById('_wb2');
+  if (b1) { b1.textContent = liked ? '❤️' : '🤍'; b1.className = 'hbtn' + (liked ? ' hbtn-pink' : ''); }
+  if (b2) { b2.textContent = liked ? '❤️' : '🤍'; b2.className = 'wish-btn' + (liked ? ' on' : ''); }
+}
+
+/* ════════════════════════════════
+   마이페이지
+════════════════════════════════ */
+async function renderMy() {
+  const allItems = cachedItems.length ? cachedItems : await fetchItems();
+  cachedItems = allItems;
+  const mine = allItems.filter(i => i.seller_name === myN);
+
+  let tabList = myTab === 'selling' ? mine.filter(i => !i.sold)
+    : myTab === 'sold' ? mine.filter(i => i.sold)
+    : await (async () => {
+        const liked = allItems.filter(async i => await isLiked(i.id));
+        const checks = await Promise.all(allItems.map(i => isLiked(i.id)));
+        return allItems.filter((_, idx) => checks[idx]);
+      })();
+
+  const msgs = {
+    selling: '아직 판매중인 상품이 없어요<br>팔기 버튼으로 올려봐요!',
+    sold: '판매완료 내역이 없어요',
+    wish: '찜한 상품이 없어요',
+  };
+
+  document.getElementById('s-my').innerHTML = `
+  <div class="sub-hdr">
+    <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
+    <span class="sub-title">마이페이지</span>
+  </div>
+  <div class="prof-card">
+    <div class="prof-av-wrap" onclick="document.getElementById('f-edit').click()">
+      <div class="prof-av">${av(myP, myN, 52)}</div>
+      <div class="prof-cam"><i class="ti ti-camera" aria-hidden="true" style="font-size:9px;"></i></div>
+    </div>
+    <div class="prof-info"><h3>${myN}</h3><p>구로구마켓 회원</p></div>
+    <button class="edit-nick-btn" onclick="document.getElementById('_enf').classList.toggle('open');document.getElementById('_nei').value=myN">수정</button>
+  </div>
+  <div class="edit-form" id="_enf">
+    <div class="edit-label">닉네임 변경</div>
+    <div class="edit-row">
+      <input type="text" id="_nei" maxlength="10">
+      <button class="save-btn" onclick="saveNick()">저장</button>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n">${mine.filter(i => !i.sold).length}</div><div class="stat-l">판매중</div></div>
+    <div class="stat"><div class="stat-n">${mine.filter(i => i.sold).length}</div><div class="stat-l">판매완료</div></div>
+    <div class="stat"><div class="stat-n">-</div><div class="stat-l">찜한 상품</div></div>
+  </div>
+  <div class="my-tabs">
+    <div class="my-tab${myTab === 'selling' ? ' on' : ''}" onclick="myTab='selling';renderMy()">🏷️ 판매중</div>
+    <div class="my-tab${myTab === 'sold' ? ' on' : ''}" onclick="myTab='sold';renderMy()">✅ 판매완료</div>
+    <div class="my-tab${myTab === 'wish' ? ' on' : ''}" onclick="myTab='wish';renderMy()">❤️ 찜 목록</div>
+  </div>
+  <div class="my-body" id="_mybody">
+    ${myTab !== 'wish'
+      ? (tabList.length
+          ? tabList.map(i => itemRowH(i)).join('')
+          : `<div class="empty-my">${msgs[myTab]}</div>`)
+      : '<div class="loading"><div class="spin"></div></div>'}
+  </div>`;
+
+  if (myTab === 'wish') {
+    const checks = await Promise.all(allItems.map(i => isLiked(i.id)));
+    const wished = allItems.filter((_, idx) => checks[idx]);
+    document.getElementById('_mybody').innerHTML = wished.length
+      ? wished.map(i => itemRowH(i)).join('')
+      : `<div class="empty-my">${msgs.wish}</div>`;
+  }
+}
+
+function itemRowH(i) {
+  const pt = i.sold ? 'sp-off' : 'sp-on';
+  const ptxt = i.sold ? '판매완료' : '판매중';
+  return `<div class="item-row" onclick="openDet('${i.id}')">
+    <div class="item-row-em">${i.emoji || '📦'}</div>
+    <div class="item-row-info">
+      <div class="item-row-name">${i.title}</div>
+      <div class="item-row-price">${i.price.toLocaleString()}원</div>
+      <div class="item-row-meta">${relTime(i.created_at)} · ❤️ ${i.likeCount}</div>
+    </div>
+    <span class="status-pill ${pt}">${ptxt}</span>
+  </div>`;
+}
+
+function saveNick() {
+  const v = document.getElementById('_nei').value.trim(); if (!v) return;
+  myN = v; renderMy(); toast('닉네임을 변경했어요');
+}
+
+/* ════════════════════════════════
+   판매 등록
+════════════════════════════════ */
+function renderSell() {
+  document.getElementById('s-sell').innerHTML = `
+  <div class="sub-hdr">
+    <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
+    <span class="sub-title">물건 올리기</span>
+  </div>
+  <div class="sell-body">
+    <div class="fr"><label>사진</label><div class="img-zone"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
+    <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름"></div>
+    <div class="fr"><label>카테고리</label>
+      <select id="_nc"><option>의류</option><option>전자기기</option><option>도서</option><option>생활용품</option><option>취미</option><option>식물</option><option>기타</option></select>
+    </div>
+    <div class="fr"><label>가격 (원) *</label><input type="number" id="_np" placeholder="예) 15000"></div>
+    <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요"></textarea></div>
+    <button class="reg-btn" id="_regbtn" onclick="doAddItem()">등록하기</button>
+  </div>`;
+}
+
+async function doAddItem() {
+  const t = document.getElementById('_nt').value.trim();
+  const p = parseInt(document.getElementById('_np').value) || 0;
+  const c = document.getElementById('_nc').value;
+  const d = document.getElementById('_nd').value.trim();
+  if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
+  const btn = document.getElementById('_regbtn');
+  btn.textContent = '등록 중...'; btn.disabled = true;
+  try {
+    await insertItem({ title: t, price: p, category: c, emoji: emM[c] || '📦', description: d });
+    toast('상품이 등록됐어요 🎉');
+    statF = '판매중'; catF = '전체';
+    goBack();
+    await renderMain('');
+  } catch (e) {
+    toast('등록에 실패했어요. 다시 시도해 주세요.');
+    btn.textContent = '등록하기'; btn.disabled = false;
+  }
+}
+
+/* ── 시작 ── */
+renderNick();
+</script>
+</body>
+</html>
