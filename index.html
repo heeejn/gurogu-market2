@@ -346,6 +346,22 @@ function readFile(file) {
     r.readAsDataURL(file);
   });
 }
+function compressImage(dataUrl, maxPx = 800, quality = 0.75) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => res(dataUrl);
+    img.src = dataUrl;
+  });
+}
 document.getElementById('f-init').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   myP = await readFile(f);
@@ -361,7 +377,8 @@ document.getElementById('f-edit').addEventListener('change', async e => {
 document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
-  itemPhotos = await Promise.all(files.map(readFile));
+  const raw = await Promise.all(files.map(readFile));
+  itemPhotos = await Promise.all(raw.map(d => compressImage(d)));
   renderItemPhotoZone();
 });
 
@@ -372,7 +389,7 @@ async function fetchItems() {
   try {
     const { data, error } = await sb
       .from('items')
-      .select('*')
+      .select('id, created_at, title, price, category, description, seller_name, seller_photo, sold')
       .order('created_at', { ascending: false });
     if (error) throw error;
     const filtered = data.filter(i => i.description !== DELETED_MARK);
@@ -599,9 +616,28 @@ function renderMainList(q) {
 
   const grid = document.querySelector('#s-main .grid');
   if (!grid) return;
-  grid.innerHTML = list.length
-    ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
-    : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
+  if (list.length) {
+    grid.innerHTML = list.map(i => cardH(i, likedItemIds.has(i.id))).join('');
+    lazyLoadThumbs(list);
+  } else {
+    grid.innerHTML = `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
+  }
+}
+
+async function lazyLoadThumbs(items) {
+  const need = items.filter(i => !i.emoji);
+  const BATCH = 3;
+  for (let b = 0; b < need.length; b += BATCH) {
+    await Promise.allSettled(need.slice(b, b + BATCH).map(async item => {
+      const { data } = await sb.from('items').select('id, emoji').eq('id', item.id).single();
+      if (!data?.emoji) return;
+      item.emoji = data.emoji;
+      const photos = itemPhotoList(data.emoji);
+      if (!photos.length) return;
+      const el = document.getElementById('thumb-' + item.id);
+      if (el) el.innerHTML = `<img src="${photos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+    }));
+  }
 }
 
 function cardH(i, liked) {
@@ -610,7 +646,7 @@ function cardH(i, liked) {
     ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
     ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
-    <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
+    <div class="card-thumb" id="thumb-${i.id}" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
     <div class="card-body">
       <div class="card-name">${i.title}</div>
       <div class="card-price">${i.price.toLocaleString()}원</div>
@@ -641,11 +677,10 @@ let curItem = null;
 
 async function openDet(id) {
   curId = id;
-  curItem = cachedItems.find(i => i.id === id);
-  if (!curItem) {
-    const { data } = await sb.from('items').select('*, likes(count)').eq('id', id).single();
-    curItem = { ...data, likeCount: data.likes[0]?.count || 0 };
-  }
+  const listItem = cachedItems.find(i => i.id === id);
+  const { data, error } = await sb.from('items').select('*').eq('id', id).single();
+  if (error || !data) { toast('상품을 불러올 수 없어요'); return; }
+  curItem = { ...data, likeCount: listItem?.likeCount || 0, commentCount: listItem?.commentCount || 0 };
   await renderDet();
   goTo('s-det');
 }
