@@ -474,7 +474,7 @@ function canStartPullRefresh(e) {
   if (ptrRefreshing || e.touches.length !== 1) return false;
   const active = activeScreenEl();
   if (!active || active.scrollTop > 0) return false;
-  if (e.target.closest('.det-gallery, .det-img, img, input, textarea, select, button, .back-btn, .hbtn, .wish-btn, .img-zone, .photo-preview')) return false;
+  if (e.target.closest('.det-gallery, .det-img, input, textarea, select, .img-zone')) return false;
   return screenHistory[screenHistory.length - 1] === 's-main' || screenHistory[screenHistory.length - 1] === 's-my';
 }
 
