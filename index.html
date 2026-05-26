@@ -9,6 +9,18 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* ─── 라이트박스 ─── */
+    .lightbox { position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .lightbox.open { opacity: 1; pointer-events: all; }
+    .lb-close { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; background: rgba(255,255,255,.18); border: none; border-radius: 50%; color: #fff; font-size: 24px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; line-height: 1; -webkit-tap-highlight-color: transparent; font-family: inherit; }
+    .lb-gallery { flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior: contain; }
+    .lb-gallery::-webkit-scrollbar { display: none; }
+    .lb-item { flex: 0 0 100%; display: flex; align-items: center; justify-content: center; scroll-snap-align: start; overflow: hidden; }
+    .lb-item img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; transform-origin: center; will-change: transform; }
+    .lb-dots { display: flex; justify-content: center; gap: 6px; padding: 14px 0; flex-shrink: 0; }
+    .lb-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.35); transition: background .15s; }
+    .lb-dot.on { background: #fff; }
+
     /* ─── 리셋 & 기본 ─── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -245,6 +257,11 @@
   <div id="s-sell" class="screen right"></div>
 </div>
 
+<div id="lightbox" class="lightbox">
+  <button class="lb-close" onclick="closeLightbox()">×</button>
+  <div class="lb-gallery" id="lb-gallery"></div>
+  <div class="lb-dots" id="lb-dots"></div>
+</div>
 <div class="toast-wrap"><div id="toast" class="toast"></div></div>
 
 <script>
@@ -401,13 +418,15 @@ function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
-    return thumbs.map(p => `<div class="det-img det-img-pending"><img src="${p}" alt="상품 사진"></div>`).join('');
+    lbPhotos = thumbs;
+    return thumbs.map((p, i) => `<div class="det-img det-img-pending" onclick="openLightbox(lbPhotos,${i})"><img src="${p}" alt="상품 사진"></div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${fallback}</div>`;
   }
-  return photos.map(p => `<div class="det-img"><img src="${p}" alt="상품 사진"></div>`).join('');
+  lbPhotos = photos;
+  return photos.map((p, i) => `<div class="det-img" onclick="openLightbox(lbPhotos,${i})" style="cursor:zoom-in"><img src="${p}" alt="상품 사진 ${i + 1}"></div>`).join('');
 }
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, m => ({
@@ -1636,6 +1655,113 @@ async function doUpdateItem() {
     btn.textContent = '수정하기'; btn.disabled = false;
   }
 }
+
+/* ════════════════════════════════
+   라이트박스 (사진 확대)
+════════════════════════════════ */
+let lbPhotos = [];
+let lbZoom = 1, lbPanX = 0, lbPanY = 0;
+let lbTouchSX = 0, lbTouchSY = 0, lbTouchSTime = 0;
+let lbPinchDist0 = 0, lbPinchZoom0 = 1;
+let lbLastTap = 0, lbDragging = false;
+
+function openLightbox(photos, startIdx = 0) {
+  if (!photos || !photos.length) return;
+  lbZoom = 1; lbPanX = 0; lbPanY = 0;
+  const gal = document.getElementById('lb-gallery');
+  const dots = document.getElementById('lb-dots');
+  gal.innerHTML = photos.map((src, i) =>
+    `<div class="lb-item" data-i="${i}"><img src="${src}" draggable="false" alt="사진 ${i + 1}"></div>`
+  ).join('');
+  dots.innerHTML = photos.length > 1
+    ? photos.map((_, i) => `<div class="lb-dot${i === startIdx ? ' on' : ''}"></div>`).join('')
+    : '';
+  document.getElementById('lightbox').classList.add('open');
+  if (startIdx > 0) requestAnimationFrame(() => { gal.scrollLeft = startIdx * gal.offsetWidth; });
+  gal.onscroll = () => {
+    const i = Math.round(gal.scrollLeft / gal.offsetWidth);
+    dots.querySelectorAll('.lb-dot').forEach((d, j) => d.classList.toggle('on', i === j));
+    lbResetZoom();
+  };
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+
+function lbCurImg() {
+  const gal = document.getElementById('lb-gallery');
+  const i = Math.round(gal.scrollLeft / gal.offsetWidth);
+  return gal.querySelectorAll('.lb-item img')[i] || null;
+}
+
+function lbResetZoom(animate) {
+  lbZoom = 1; lbPanX = 0; lbPanY = 0;
+  const img = lbCurImg();
+  if (!img) return;
+  if (animate) { img.style.transition = 'transform .2s'; setTimeout(() => { img.style.transition = ''; }, 200); }
+  img.style.transform = '';
+}
+
+function lbApply(img) {
+  img.style.transform = `scale(${lbZoom}) translate(${lbPanX / lbZoom}px,${lbPanY / lbZoom}px)`;
+}
+
+(function () {
+  const lb = document.getElementById('lightbox');
+  lb.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      lbPinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      lbPinchZoom0 = lbZoom;
+    } else {
+      lbTouchSX = e.touches[0].clientX;
+      lbTouchSY = e.touches[0].clientY;
+      lbTouchSTime = Date.now();
+      lbDragging = false;
+    }
+  }, { passive: false });
+
+  lb.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      lbZoom = Math.min(4, Math.max(1, lbPinchZoom0 * (d / lbPinchDist0)));
+      const img = lbCurImg(); if (img) lbApply(img);
+    } else if (e.touches.length === 1 && lbZoom > 1) {
+      e.preventDefault();
+      lbPanX += e.touches[0].clientX - lbTouchSX;
+      lbPanY += e.touches[0].clientY - lbTouchSY;
+      lbTouchSX = e.touches[0].clientX;
+      lbTouchSY = e.touches[0].clientY;
+      lbDragging = true;
+      const img = lbCurImg(); if (img) lbApply(img);
+    }
+  }, { passive: false });
+
+  lb.addEventListener('touchend', e => {
+    const cx = e.changedTouches[0].clientX, cy = e.changedTouches[0].clientY;
+    const dx = cx - lbTouchSX, dy = cy - lbTouchSY;
+    const dt = Date.now() - lbTouchSTime;
+    if (lbZoom === 1 && dy > 80 && Math.abs(dx) < 80 && dt < 400) { closeLightbox(); return; }
+    if (!lbDragging && Math.hypot(dx, dy) < 12 && dt < 250) {
+      const now = Date.now();
+      if (now - lbLastTap < 350) {
+        const img = lbCurImg();
+        if (img) {
+          if (lbZoom === 1) {
+            lbZoom = 2.5;
+            img.style.transition = 'transform .2s';
+            lbApply(img);
+            setTimeout(() => { img.style.transition = ''; }, 200);
+          } else { lbResetZoom(true); }
+        }
+        lbLastTap = 0;
+      } else { lbLastTap = now; }
+    }
+    lbDragging = false;
+  }, { passive: true });
+})();
 
 /* ── 시작 ── */
 if (myN) {
