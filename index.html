@@ -196,8 +196,11 @@
     .img-zone { width: 100%; min-height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
     .img-zone.has-img { align-items: stretch; justify-content: flex-start; border-style: solid; padding: 8px; background: var(--surface); overflow-x: auto; }
     .img-zone.has-img::-webkit-scrollbar { display: none; }
-    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; position: relative; }
     .photo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-del-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; background: rgba(0,0,0,.55); color: #fff; border: none; border-radius: 50%; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    .photo-add-btn { width: 112px; aspect-ratio: 1; border: 1px dashed var(--br2); border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--text3); cursor: pointer; background: var(--bg); -webkit-tap-highlight-color: transparent; }
+    .made-by { text-align: center; font-size: 11px; color: var(--text3); padding: 18px 0 10px; font-weight: 700; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
     .reg-btn:active { background: var(--pink-dark); }
 
@@ -516,7 +519,7 @@ document.getElementById('app').addEventListener('touchmove', e => {
   const dx = Math.abs(e.touches[0].clientX - ptrStartX);
   const dy = e.touches[0].clientY - ptrStartY;
   if (dx > 28 || dy < 0) { ptrPulling = false; setPullRefresh(false); return; }
-  if (dy > 12) e.preventDefault();
+  if (dy > 40) e.preventDefault();
   if (dy > 64) setPullRefresh(true, '놓으면 새로고침');
 }, { passive: false });
 
@@ -633,8 +636,9 @@ document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
   const results = await Promise.all(files.map(f => readItemImageBoth(f)));
-  itemPhotos = results.map(r => r.photo);
-  itemThumbs = results.map(r => r.thumb);
+  itemPhotos = [...itemPhotos, ...results.map(r => r.photo)];
+  itemThumbs = [...itemThumbs, ...results.map(r => r.thumb)];
+  e.target.value = '';
   renderItemPhotoZone();
 });
 
@@ -644,14 +648,14 @@ document.getElementById('f-item').addEventListener('change', async e => {
 async function fetchItems() {
   let { data, error } = await sb
     .from('items')
-    .select('id,title,price,category,description,seller_name,sold,created_at,thumbnail_url,photo_urls')
+    .select('id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls')
     .order('created_at', { ascending: false })
     .limit(60);
   if (error?.code === '42703') {
     console.warn('photo_urls/thumbnail_url 컬럼이 아직 없어 기존 방식으로 불러옵니다.', error);
     const fallback = await sb
       .from('items')
-      .select('id,title,price,category,description,seller_name,sold,created_at')
+      .select('id,title,price,category,description,seller_name,seller_photo,sold,created_at')
       .order('created_at', { ascending: false })
       .limit(60);
     data = fallback.data;
@@ -661,7 +665,7 @@ async function fetchItems() {
 	  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
 	    ...i,
 	    emoji: itemRecordPayload(i) || cachedThumbPayload(i.id),
-	    seller_photo: '',
+	    seller_photo: i.seller_photo || '',
     likeCount: i.likeCount || 0,
     commentCount: i.commentCount || 0,
 	  }));
@@ -1006,7 +1010,7 @@ async function renderMain(q) {
   <div class="stat-tabs">
     ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';renderMain()">${s}</div>`).join('')}
   </div>
-  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
+  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div><div class="made-by">Made by 윤듬듬🐢</div></div>`;
 
   const _bar = document.querySelector('.filter-bar');
   const _activeChip = _bar?.querySelector('.chip.on');
@@ -1134,7 +1138,13 @@ async function openDet(id) {
       commentCount: curItem?.commentCount || 0,
     };
     cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...curItem } : i);
+    const _gl = document.querySelector('.det-gallery');
+    const _glScroll = _gl?.scrollLeft || 0;
     renderDet();
+    if (_glScroll > 0) requestAnimationFrame(() => {
+      const g = document.querySelector('.det-gallery');
+      if (g) g.scrollLeft = _glScroll;
+    });
     fetchLikeCount(id).then(likeCount => {
       if (curId !== id || !curItem) return;
       curItem.likeCount = likeCount;
@@ -1528,7 +1538,7 @@ function renderSell(item = null) {
     <span class="sub-title">${edit ? '상품 수정' : '물건 올리기'}</span>
   </div>
   <div class="sell-body">
-    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto" onclick="document.getElementById('f-item').click()"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
+    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto"></div></div>
     <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름" value="${esc(item?.title)}"></div>
     <div class="fr"><label>카테고리</label>
       <select id="_nc">${cats.map(c => `<option${item?.category === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
@@ -1543,10 +1553,26 @@ function renderSell(item = null) {
 function renderItemPhotoZone() {
   const z = document.getElementById('_itemphoto');
   if (!z) return;
-  z.className = 'img-zone' + (itemPhotos.length ? ' has-img' : '');
-  z.innerHTML = itemPhotos.length
-    ? itemPhotos.map((p, idx) => `<div class="photo-preview"><img src="${p}" alt="상품 사진 ${idx + 1}"></div>`).join('')
-    : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
+  if (itemPhotos.length) {
+    z.className = 'img-zone has-img';
+    z.onclick = null;
+    z.innerHTML = itemPhotos.map((p, idx) => `
+      <div class="photo-preview">
+        <img src="${p}" alt="상품 사진 ${idx + 1}">
+        <button class="photo-del-btn" type="button" onclick="event.stopPropagation();removePhoto(${idx})">×</button>
+      </div>`).join('') +
+      `<div class="photo-add-btn" onclick="document.getElementById('f-item').click()"><i class="ti ti-plus" aria-hidden="true"></i></div>`;
+  } else {
+    z.className = 'img-zone';
+    z.onclick = () => document.getElementById('f-item').click();
+    z.innerHTML = `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
+  }
+}
+
+function removePhoto(idx) {
+  itemPhotos.splice(idx, 1);
+  itemThumbs.splice(idx, 1);
+  renderItemPhotoZone();
 }
 
 async function doAddItem() {
