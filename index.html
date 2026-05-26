@@ -324,6 +324,9 @@ function isThumbOnlyPayload(v) {
   try { return !!JSON.parse(v).thumbOnly; }
   catch (e) { return false; }
 }
+function plainEmoji(v) {
+  return typeof v === 'string' && v && !isImg(v) && v[0] !== '[' && v[0] !== '{' ? v : '';
+}
 function rememberItemThumb(id, thumb) {
   if (!id || !thumb) return;
   try { localStorage.setItem(PHOTO_CACHE_PREFIX + id, thumb); }
@@ -335,8 +338,12 @@ function itemMedia(v, category) {
 }
 function itemGallery(v, category) {
   const photos = itemPhotoList(v);
+  const thumbs = itemThumbList(v);
+  if (!photos.length && thumbs.length) {
+    return `<div class="det-img"><img src="${thumbs[0]}" alt="상품 사진"></div>`;
+  }
   if (!photos.length) {
-    const fallback = typeof v === 'string' && v && v[0] !== '[' && v[0] !== '{' ? v : '<i class="ti ti-photo" aria-hidden="true"></i>';
+    const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${fallback}</div>`;
   }
   return photos.map(p => `<div class="det-img"><img src="${p}" alt="상품 사진"></div>`).join('');
@@ -863,7 +870,7 @@ function renderDet() {
   document.getElementById('s-det').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
-    <span class="sub-title">${it.category} ${itemPhotoList(it.emoji).length ? '' : (it.emoji || '')}</span>
+    <span class="sub-title">${it.category} ${plainEmoji(it.emoji)}</span>
     ${!own ? `<div class="sub-right"><div class="hbtn${liked ? ' hbtn-pink' : ''}" id="_wbtn" onclick="doWishDet('${it.id}')">${liked ? '❤️' : '🤍'}</div></div>` : ''}
   </div>
   <div class="det-gallery">${itemGallery(it.emoji, it.category)}</div>
