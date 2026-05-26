@@ -263,10 +263,13 @@ let catF = '전체', statF = '판매중';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
 const PHOTO_CACHE_PREFIX = 'gurogu_item_thumb_';
+const COMMENT_CACHE_PREFIX = 'gurogu_item_comments_';
 const hydratingPhotoIds = new Set();
 const hydratedPhotoIds = new Set();
+const photoHydrationPromises = new Map();
 const commentCache = new Map();
 const commentsLoading = new Set();
+const commentPromises = new Map();
 const commentTextMap = new Map();
 let userKey = localStorage.getItem('gurogu_userkey') || (() => {
   const k = crypto.randomUUID(); localStorage.setItem('gurogu_userkey', k); return k;
@@ -315,9 +318,20 @@ function getCachedThumb(id) {
   try { return localStorage.getItem(PHOTO_CACHE_PREFIX + id) || ''; }
   catch (e) { return ''; }
 }
+function getCachedThumbs(id) {
+  const raw = getCachedThumb(id);
+  if (!raw) return [];
+  if (isImg(raw)) return [raw];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
+  } catch (e) {
+    return [];
+  }
+}
 function cachedThumbPayload(id) {
-  const thumb = getCachedThumb(id);
-  return thumb ? JSON.stringify({ photos: [], thumbs: [thumb], thumbOnly: true }) : '';
+  const thumbs = getCachedThumbs(id);
+  return thumbs.length ? JSON.stringify({ photos: [], thumbs, thumbOnly: true }) : '';
 }
 function isThumbOnlyPayload(v) {
   if (typeof v !== 'string' || v[0] !== '{') return false;
@@ -332,6 +346,34 @@ function rememberItemThumb(id, thumb) {
   try { localStorage.setItem(PHOTO_CACHE_PREFIX + id, thumb); }
   catch (e) { console.warn('썸네일 캐시 저장 실패', e); }
 }
+function rememberItemThumbs(id, thumbs) {
+  const clean = (thumbs || []).filter(isImg);
+  if (!id || !clean.length) return;
+  try { localStorage.setItem(PHOTO_CACHE_PREFIX + id, JSON.stringify(clean)); }
+  catch (e) { rememberItemThumb(id, clean[0]); }
+}
+function getCachedComments(id) {
+  try {
+    const raw = localStorage.getItem(COMMENT_CACHE_PREFIX + id);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || Date.now() - parsed.savedAt > 5 * 60 * 1000) return null;
+    return Array.isArray(parsed.comments) ? parsed.comments : null;
+  } catch (e) {
+    return null;
+  }
+}
+function rememberComments(id, comments) {
+  try {
+    localStorage.setItem(COMMENT_CACHE_PREFIX + id, JSON.stringify({ savedAt: Date.now(), comments }));
+  } catch (e) {
+    console.warn('댓글 캐시 저장 실패', e);
+  }
+}
+function forgetCachedComments(id) {
+  try { localStorage.removeItem(COMMENT_CACHE_PREFIX + id); }
+  catch (e) {}
+}
 function itemMedia(v, category) {
   const thumbs = itemThumbList(v);
   return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
@@ -340,7 +382,7 @@ function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
-    return `<div class="det-img"><img src="${thumbs[0]}" alt="상품 사진"></div>`;
+    return thumbs.map(p => `<div class="det-img det-img-pending"><img src="${p}" alt="상품 사진"></div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
@@ -531,10 +573,22 @@ async function fetchItemPhotos(ids) {
 }
 
 async function hydrateVisiblePhotos(ids, q) {
-  await Promise.all(ids.map(async id => {
-    const existing = cachedItems.find(i => i.id === id);
-    const hasFullPhotos = itemPhotoList(existing?.emoji).length && !isThumbOnlyPayload(existing?.emoji);
-    if (hydratedPhotoIds.has(id) || hydratingPhotoIds.has(id) || hasFullPhotos) return;
+  await Promise.all(ids.map(id => hydrateItemPhotos(id, q)));
+}
+
+function prefetchVisibleDetails(q) {
+  const visible = filterMainItems(q).slice(0, 10);
+  visible.forEach(i => hydrateItemPhotos(i.id, q));
+  visible.slice(0, 6).forEach(i => loadCommentsData(i.id));
+}
+
+async function hydrateItemPhotos(id, q) {
+  const existing = cachedItems.find(i => i.id === id);
+  const hasFullPhotos = itemPhotoList(existing?.emoji).length && !isThumbOnlyPayload(existing?.emoji);
+  if (hydratedPhotoIds.has(id) || hasFullPhotos) return existing;
+  if (photoHydrationPromises.has(id)) return photoHydrationPromises.get(id);
+
+  const promise = (async () => {
     hydratingPhotoIds.add(id);
     const { data, error } = await sb
       .from('items')
@@ -542,29 +596,35 @@ async function hydrateVisiblePhotos(ids, q) {
       .eq('id', id)
       .single();
     hydratingPhotoIds.delete(id);
-    if (error || !data) return;
+    if (error || !data) return existing;
 
     let nextEmoji = data.emoji || '';
     const photos = itemPhotoList(nextEmoji);
     let thumbs = itemThumbList(nextEmoji);
-    if (photos.length && (!thumbs.length || thumbs[0] === photos[0] || thumbs[0].length > 140000)) {
-      const thumb = await makeThumbFromDataUrl(photos[0]);
-      thumbs = [thumb];
+    if (photos.length && (!thumbs.length || thumbs[0] === photos[0] || thumbs[0].length > 140000 || thumbs.length < photos.length)) {
+      thumbs = await Promise.all(photos.map(p => makeThumbFromDataUrl(p)));
       nextEmoji = itemPayload(photos, data.category || existing?.category || '기타', thumbs);
       sb.from('items').update({ emoji: nextEmoji }).eq('id', id).then(({ error }) => {
         if (error) console.warn('썸네일 저장 실패', error);
       });
     }
-    if (thumbs[0]) rememberItemThumb(id, thumbs[0]);
+    if (thumbs[0]) rememberItemThumbs(id, thumbs);
     hydratedPhotoIds.add(id);
 
-    cachedItems = cachedItems.map(i => i.id === id ? {
-      ...i,
+    const merged = {
+      ...(existing || {}),
+      ...data,
       emoji: nextEmoji,
-      seller_photo: data.seller_photo || '',
-    } : i);
-    renderMainList(q);
-  }));
+      seller_photo: data.seller_photo || existing?.seller_photo || '',
+    };
+    cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...merged } : i);
+    if (q !== undefined) renderMainList(q);
+    return merged;
+  })();
+
+  photoHydrationPromises.set(id, promise);
+  promise.finally(() => photoHydrationPromises.delete(id));
+  return promise;
 }
 
 async function fetchComments(itemId) {
@@ -647,10 +707,18 @@ async function fetchLikedItemIds(items) {
   return new Set((data || []).map(l => l.item_id));
 }
 
+async function fetchLikeCount(itemId) {
+  const { data, error } = await sb
+    .from('likes')
+    .select('item_id')
+    .eq('item_id', itemId);
+  if (error) { console.error(error); return 0; }
+  return (data || []).length;
+}
+
 async function hydrateMainMeta(q) {
   const items = cachedItems;
-  const visibleIds = filterMainItems(q).slice(0, 8).map(i => i.id);
-  hydrateVisiblePhotos(visibleIds, q);
+  prefetchVisibleDetails(q);
   const [liked, counts] = await Promise.all([
     fetchLikedItemIds(items),
     fetchItemCounts(items),
@@ -776,6 +844,13 @@ function renderMainList(q) {
   grid.innerHTML = list.length
     ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
     : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
+  prefetchSoon(q);
+}
+
+let prefetchTimer;
+function prefetchSoon(q) {
+  clearTimeout(prefetchTimer);
+  prefetchTimer = setTimeout(() => prefetchVisibleDetails(q), 80);
 }
 
 function filterMainItems(q) {
@@ -790,7 +865,7 @@ function filterMainItems(q) {
 
 function cardH(i, liked) {
   const p = i.seller_name === myN ? myP : (i.seller_photo || '');
-  return `<div class="card" onclick="openDet('${i.id}')">
+  return `<div class="card" onpointerdown="prefetchItemDetail('${i.id}')" onmouseenter="prefetchItemDetail('${i.id}')" onclick="openDet('${i.id}')">
     ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
     ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
@@ -806,7 +881,12 @@ function cardH(i, liked) {
         </div>
       </div>
     </div>
-  </div>`;
+	  </div>`;
+}
+
+function prefetchItemDetail(id) {
+  hydrateItemPhotos(id, document.getElementById('_sq')?.value || '');
+  loadCommentsData(id);
 }
 
 async function doToggleLike(itemId, btn) {
@@ -830,14 +910,33 @@ async function openDet(id) {
   curId = id;
   curItem = cachedItems.find(i => i.id === id);
   if (!curItem) curItem = { id, title: '상품', price: 0, category: '기타', emoji: '📦', seller_name: '', description: '' };
-  renderDet();
-  goTo('s-det');
+
+  const hasFullPhotos = itemPhotoList(curItem.emoji).length && !isThumbOnlyPayload(curItem.emoji);
+  const hasThumbs = itemThumbList(curItem.emoji).length > 0;
+  const needsFullPhotos = !hasFullPhotos && !hasThumbs && !plainEmoji(curItem.emoji);
+  if (needsFullPhotos) {
+    renderDetLoading(curItem);
+    goTo('s-det');
+    try {
+      loadCommentsData(id);
+      const photoItem = await hydrateItemPhotos(id);
+      if (curId !== id) return;
+      curItem = { ...(curItem || {}), ...(photoItem || {}) };
+      renderDet();
+    } catch (e) {
+      console.error(e);
+      renderDet();
+    }
+  } else {
+    renderDet();
+    goTo('s-det');
+  }
 
   try {
     const { data } = await sb.from('items').select('*').eq('id', id).single();
     if (!data || curId !== id) return;
     const thumbs = itemThumbList(data.emoji);
-    if (thumbs[0]) rememberItemThumb(id, thumbs[0]);
+    if (thumbs[0]) rememberItemThumbs(id, thumbs);
     curItem = {
       ...(curItem || {}),
       ...data,
@@ -846,19 +945,38 @@ async function openDet(id) {
     };
     cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...curItem } : i);
     renderDet();
-    fetchItemCounts([data]).then(counts => {
+    fetchLikeCount(id).then(likeCount => {
       if (curId !== id || !curItem) return;
-      curItem.likeCount = counts.likes.get(id) || curItem.likeCount || 0;
-      curItem.commentCount = counts.comments.get(id) || curItem.commentCount || 0;
-      cachedItems = cachedItems.map(i => i.id === id ? { ...i, likeCount: curItem.likeCount, commentCount: curItem.commentCount } : i);
+      curItem.likeCount = likeCount;
+      cachedItems = cachedItems.map(i => i.id === id ? { ...i, likeCount } : i);
       const heart = document.getElementById('_det-like-cnt');
-      const cmt = document.getElementById('_cmt-cnt');
       if (heart) heart.textContent = curItem.likeCount;
-      if (cmt && !commentCache.has(id)) cmt.textContent = curItem.commentCount || 0;
     });
   } catch (e) {
     console.error(e);
   }
+}
+
+function renderDetLoading(it) {
+  document.getElementById('s-det').innerHTML = `
+  <div class="sub-hdr">
+    <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
+    <span class="sub-title">${it.category || '상품'}</span>
+  </div>
+  <div class="det-gallery"><div class="det-img" style="background:${bgM[it.category] || '#F1EFE8'}"><div class="loading"><div class="spin"></div> 사진 불러오는 중...</div></div></div>
+  <div class="det-content">
+    <div class="det-price">${(it.price || 0).toLocaleString()}원</div>
+    <div class="det-title">${esc(it.title || '상품')}</div>
+    <div class="det-desc">${esc(it.description || '')}</div>
+    <div class="cmt-wrap">
+      <div class="cmt-head">댓글</div>
+      <div class="cmt-form">
+        <input class="cmt-inp" id="_dci" type="text" placeholder="댓글을 남겨 보세요" maxlength="200">
+        <button class="cmt-post" onclick="doAddCmt()">등록</button>
+      </div>
+      <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
+    </div>
+  </div>`;
 }
 
 function renderDet() {
@@ -907,16 +1025,39 @@ function renderDet() {
 
 async function loadComments(itemId = curId, force = false) {
   if (!itemId) return;
-  if (!force && commentCache.has(itemId)) {
-    renderComments(itemId, commentCache.get(itemId));
-    return;
-  }
-  if (commentsLoading.has(itemId)) return;
-  commentsLoading.add(itemId);
-  const cmts = await fetchComments(itemId);
-  commentsLoading.delete(itemId);
-  commentCache.set(itemId, cmts);
+  const cmts = await loadCommentsData(itemId, force);
   renderComments(itemId, cmts);
+}
+
+async function loadCommentsData(itemId, force = false) {
+  if (!force && commentCache.has(itemId)) {
+    const cached = commentCache.get(itemId);
+    renderComments(itemId, cached);
+    return cached;
+  }
+  const localCached = !force ? getCachedComments(itemId) : null;
+  if (localCached) {
+    commentCache.set(itemId, localCached);
+    renderComments(itemId, localCached);
+  }
+  if (!force && commentPromises.has(itemId)) return commentPromises.get(itemId);
+
+  commentsLoading.add(itemId);
+  const promise = fetchComments(itemId).then(cmts => {
+    commentsLoading.delete(itemId);
+    commentCache.set(itemId, cmts);
+    rememberComments(itemId, cmts);
+    renderComments(itemId, cmts);
+    return cmts;
+  }).catch(e => {
+    commentsLoading.delete(itemId);
+    console.error(e);
+    return [];
+  }).finally(() => {
+    commentPromises.delete(itemId);
+  });
+  commentPromises.set(itemId, promise);
+  return localCached || promise;
 }
 
 function renderComments(itemId, cmts) {
@@ -1002,6 +1143,7 @@ async function doAddCmt() {
   inp.value = '';
   await insertComment(curId, v);
   commentCache.delete(curId);
+  forgetCachedComments(curId);
   await loadComments(curId, true);
 }
 
@@ -1010,6 +1152,7 @@ async function doAddRep(parentId) {
   const v = inp?.value.trim(); if (!v) return;
   await insertComment(curId, v, parentId);
   commentCache.delete(curId);
+  forgetCachedComments(curId);
   await loadComments(curId, true);
 }
 
@@ -1019,6 +1162,7 @@ async function doSaveCmt(id) {
   await updateComment(id, v);
   toast('댓글을 수정했어요');
   commentCache.delete(curId);
+  forgetCachedComments(curId);
   await loadComments(curId, true);
 }
 
@@ -1027,6 +1171,7 @@ async function doDelCmt(id) {
   await deleteComment(id);
   toast('댓글을 삭제했어요');
   commentCache.delete(curId);
+  forgetCachedComments(curId);
   await loadComments(curId, true);
 }
 
