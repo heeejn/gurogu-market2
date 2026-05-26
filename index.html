@@ -77,6 +77,7 @@
     .card:active { opacity: .88; }
     .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
     .card-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
+    .photo-loading { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text3); background: linear-gradient(135deg, #F8F9FB, #EEF1F5); font-size: 26px; }
     .card-body { padding: 8px 9px 10px; border-top: .5px solid var(--br); }
     .card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-price { font-size: 13px; font-weight: 800; color: var(--pink-dark); }
@@ -109,7 +110,10 @@
     .det-time { font-size: 11px; color: var(--text3); margin-left: auto; }
     .wish-btn { background: var(--surface); border: .5px solid var(--br2); border-radius: 10px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
     .wish-btn.on { border-color: var(--pink-br); }
+    .own-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 13px; }
+    .own-actions button { margin-bottom: 0; }
     .sold-tog { width: 100%; background: var(--bg); border: .5px solid var(--br2); color: var(--text2); border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
+    .edit-item-btn { width: 100%; background: var(--teal-bg); border: .5px solid var(--teal-br); color: var(--teal-dark); border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
     .del-item-btn { width: 100%; background: #FFF5F6; border: .5px solid #F2B8C2; color: #B4233B; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
     .del-item-btn:disabled { opacity: .6; cursor: default; }
 
@@ -254,9 +258,12 @@ const bgM = { 의류:'#FBEAF0', 전자기기:'#E6F1FB', 도서:'#FAEEDA', 생활
 let myN = localStorage.getItem('gurogu_nickname') || '';
 let myP = localStorage.getItem('gurogu_profile_photo') || '';
 let itemPhotos = [];
+let itemThumbs = [];
 let catF = '전체', statF = '판매중';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
+const PHOTO_CACHE_PREFIX = 'gurogu_item_thumb_';
+const hydratingPhotoIds = new Set();
 let userKey = localStorage.getItem('gurogu_userkey') || (() => {
   const k = crypto.randomUUID(); localStorage.setItem('gurogu_userkey', k); return k;
 })();
@@ -275,20 +282,47 @@ function isImg(v) {
 function itemPhotoList(v) {
   if (!v) return [];
   if (isImg(v)) return [v];
-  if (typeof v !== 'string' || v[0] !== '[') return [];
+  if (typeof v !== 'string' || (v[0] !== '[' && v[0] !== '{')) return [];
   try {
     const parsed = JSON.parse(v);
+    if (parsed && Array.isArray(parsed.photos)) return parsed.photos.filter(isImg);
     return Array.isArray(parsed) ? parsed.filter(isImg) : [];
   } catch (e) {
     return [];
   }
 }
-function itemPayload(photos, category) {
-  return photos.length ? JSON.stringify(photos) : (emM[category] || '📦');
+function itemThumbList(v) {
+  if (!v) return [];
+  if (isImg(v)) return [v];
+  if (typeof v !== 'string' || (v[0] !== '[' && v[0] !== '{')) return [];
+  try {
+    const parsed = JSON.parse(v);
+    if (parsed && Array.isArray(parsed.thumbs)) return parsed.thumbs.filter(isImg);
+    if (parsed && Array.isArray(parsed.photos)) return parsed.photos.filter(isImg);
+    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function itemPayload(photos, category, thumbs = []) {
+  return photos.length ? JSON.stringify({ photos, thumbs: thumbs.length ? thumbs : photos }) : (emM[category] || '📦');
+}
+function getCachedThumb(id) {
+  try { return localStorage.getItem(PHOTO_CACHE_PREFIX + id) || ''; }
+  catch (e) { return ''; }
+}
+function cachedThumbPayload(id) {
+  const thumb = getCachedThumb(id);
+  return thumb ? JSON.stringify({ photos: [thumb], thumbs: [thumb] }) : '';
+}
+function rememberItemThumb(id, thumb) {
+  if (!id || !thumb) return;
+  try { localStorage.setItem(PHOTO_CACHE_PREFIX + id, thumb); }
+  catch (e) { console.warn('썸네일 캐시 저장 실패', e); }
 }
 function itemMedia(v, category) {
-  const photos = itemPhotoList(v);
-  return photos.length ? `<img src="${photos[0]}" alt="">` : (v || emM[category] || '📦');
+  const thumbs = itemThumbList(v);
+  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
 }
 function itemGallery(v, category) {
   const photos = itemPhotoList(v);
@@ -296,6 +330,11 @@ function itemGallery(v, category) {
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${v || emM[category] || '📦'}</div>`;
   }
   return photos.map(p => `<div class="det-img"><img src="${p}" alt="상품 사진"></div>`).join('');
+}
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[m]));
 }
 function saveProfile() {
   if (myN) localStorage.setItem('gurogu_nickname', myN);
@@ -334,7 +373,7 @@ function goBack() {
   const prev = screenHistory[screenHistory.length - 1];
   document.getElementById(cur).className = 'screen right';
   document.getElementById(prev).className = 'screen active';
-  if (prev === 's-main') renderMainList();
+  if (prev === 's-main') renderMain();
   if (prev === 's-my') renderMy();
 }
 
@@ -346,20 +385,40 @@ function readFile(file) {
     r.readAsDataURL(file);
   });
 }
-function compressImage(dataUrl, maxPx = 800, quality = 0.75) {
+function readItemImage(file, max = 900, quality = .78) {
+  return new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => res(e.target.result);
+      img.src = e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+function makeThumbFromDataUrl(src, max = 360, quality = .68) {
   return new Promise(res => {
     const img = new Image();
     img.onload = () => {
-      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
-      const w = Math.round(img.width * ratio);
-      const h = Math.round(img.height * ratio);
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      c.getContext('2d').drawImage(img, 0, 0, w, h);
-      res(c.toDataURL('image/jpeg', quality));
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      res(canvas.toDataURL('image/jpeg', quality));
     };
-    img.onerror = () => res(dataUrl);
-    img.src = dataUrl;
+    img.onerror = () => res(src);
+    img.src = src;
   });
 }
 document.getElementById('f-init').addEventListener('change', async e => {
@@ -377,8 +436,8 @@ document.getElementById('f-edit').addEventListener('change', async e => {
 document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
-  const raw = await Promise.all(files.map(readFile));
-  itemPhotos = await Promise.all(raw.map(d => compressImage(d)));
+  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 900, .76)));
+  itemThumbs = await Promise.all(files.map(f => readItemImage(f, 360, .68)));
   renderItemPhotoZone();
 });
 
@@ -386,36 +445,86 @@ document.getElementById('f-item').addEventListener('change', async e => {
    Supabase 데이터 함수
 ════════════════════════════════ */
 async function fetchItems() {
-  try {
+  const { data, error } = await sb
+    .from('items')
+    .select('id,title,price,category,description,seller_name,sold,created_at')
+    .order('created_at', { ascending: false })
+    .limit(60);
+  if (error) { console.error(JSON.stringify(error)); return []; }
+  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
+    ...i,
+    emoji: cachedThumbPayload(i.id),
+    seller_photo: '',
+    likeCount: i.likeCount || 0,
+    commentCount: i.commentCount || 0,
+  }));
+}
+
+async function fetchItemCounts(items) {
+  const ids = items.map(i => i.id);
+  const empty = { likes: new Map(), comments: new Map() };
+  if (!ids.length) return empty;
+
+  const [likesRes, commentsRes] = await Promise.all([
+    sb.from('likes').select('item_id').in('item_id', ids),
+    sb.from('comments').select('item_id').in('item_id', ids),
+  ]);
+  if (likesRes.error) console.error(likesRes.error);
+  if (commentsRes.error) console.error(commentsRes.error);
+
+  const likes = new Map();
+  const comments = new Map();
+  (likesRes.data || []).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
+  (commentsRes.data || []).forEach(c => comments.set(c.item_id, (comments.get(c.item_id) || 0) + 1));
+  return { likes, comments };
+}
+
+async function fetchItemPhotos(ids) {
+  if (!ids.length) return new Map();
+  const photos = new Map();
+  for (const id of ids) {
     const { data, error } = await sb
       .from('items')
-      .select('id, created_at, title, price, category, description, seller_name, seller_photo, sold')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    const filtered = data.filter(i => i.description !== DELETED_MARK);
-    const ids = filtered.map(i => i.id);
-    const likeCounts = {};
-    const commentCounts = {};
-    if (ids.length) {
-      const [likesRes, cmtRes] = await Promise.allSettled([
-        sb.from('likes').select('item_id, user_key').in('item_id', ids),
-        sb.from('comments').select('item_id').in('item_id', ids),
-      ]);
-      if (likesRes.status === 'fulfilled' && likesRes.value.data) {
-        likesRes.value.data.forEach(l => {
-          likeCounts[l.item_id] = (likeCounts[l.item_id] || 0) + 1;
-          if (l.user_key === userKey) likedItemIds.add(l.item_id);
-        });
-        likedItemIdsReady = true;
-      }
-      if (cmtRes.status === 'fulfilled' && cmtRes.value.data) {
-        cmtRes.value.data.forEach(c => { commentCounts[c.item_id] = (commentCounts[c.item_id] || 0) + 1; });
-      }
+      .select('id,emoji,seller_photo')
+      .eq('id', id)
+      .single();
+    if (!error && data) photos.set(id, { emoji: data.emoji, seller_photo: data.seller_photo || '' });
+  }
+  return photos;
+}
+
+async function hydrateVisiblePhotos(ids, q) {
+  for (const id of ids) {
+    const existing = cachedItems.find(i => i.id === id);
+    if (hydratingPhotoIds.has(id) || itemThumbList(existing?.emoji).length) continue;
+    hydratingPhotoIds.add(id);
+    const { data, error } = await sb
+      .from('items')
+      .select('id,emoji,seller_photo,category')
+      .eq('id', id)
+      .single();
+    hydratingPhotoIds.delete(id);
+    if (error || !data) continue;
+
+    let nextEmoji = data.emoji || '';
+    const photos = itemPhotoList(nextEmoji);
+    let thumbs = itemThumbList(nextEmoji);
+    if (photos.length && (!thumbs.length || thumbs[0] === photos[0] || thumbs[0].length > 140000)) {
+      const thumb = await makeThumbFromDataUrl(photos[0]);
+      thumbs = [thumb];
+      nextEmoji = itemPayload(photos, data.category || existing?.category || '기타', thumbs);
+      sb.from('items').update({ emoji: nextEmoji }).eq('id', id).then(({ error }) => {
+        if (error) console.warn('썸네일 저장 실패', error);
+      });
     }
-    return filtered.map(i => ({ ...i, likeCount: likeCounts[i.id] || 0, commentCount: commentCounts[i.id] || 0 }));
-  } catch (e) {
-    console.error(e);
-    return null;
+    if (thumbs[0]) rememberItemThumb(id, thumbs[0]);
+
+    cachedItems = cachedItems.map(i => i.id === id ? {
+      ...i,
+      emoji: nextEmoji,
+      seller_photo: data.seller_photo || '',
+    } : i);
+    renderMainList(q);
   }
 }
 
@@ -436,13 +545,16 @@ async function insertItem({ title, price, category, emoji, description }) {
   if (error) throw error;
 }
 
-async function updateSoldStatus(id, sold) {
-  await sb.from('items').update({ sold }).eq('id', id);
+async function updateItem(id, { title, price, category, emoji, description }) {
+  const { error } = await sb.from('items').update({
+    title, price, category, emoji, description,
+    seller_photo: myP,
+  }).eq('id', id);
+  if (error) throw error;
 }
 
-async function updateItem(id, { title, price, category, emoji, description }) {
-  const { error } = await sb.from('items').update({ title, price, category, emoji, description }).eq('id', id);
-  if (error) throw error;
+async function updateSoldStatus(id, sold) {
+  await sb.from('items').update({ sold }).eq('id', id);
 }
 
 async function deleteItem(id) {
@@ -493,6 +605,25 @@ async function fetchLikedItemIds(items) {
     .in('item_id', ids);
   if (error) { console.error(error); return new Set(); }
   return new Set((data || []).map(l => l.item_id));
+}
+
+async function hydrateMainMeta(q) {
+  const items = cachedItems;
+  const visibleIds = filterMainItems(q).slice(0, 8).map(i => i.id);
+  hydrateVisiblePhotos(visibleIds, q);
+  const [liked, counts] = await Promise.all([
+    fetchLikedItemIds(items),
+    fetchItemCounts(items),
+  ]);
+  likedItemIds = liked;
+  likedItemIdsReady = true;
+  cachedItems = cachedItems.map(i => ({
+    ...i,
+    likeCount: counts.likes.get(i.id) || 0,
+    commentCount: counts.comments.get(i.id) || 0,
+  }));
+  renderMainList(q);
+
 }
 
 async function insertComment(itemId, content, parentId = null) {
@@ -549,7 +680,6 @@ async function startApp() {
 let cachedItems = [];
 let likedItemIds = new Set();
 let likedItemIdsReady = false;
-let editingItem = null;
 
 async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
@@ -581,63 +711,41 @@ async function renderMain(q) {
     </div>
   </div>
   <div class="filter-bar">
-    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" onclick="catF='${c}';document.querySelectorAll('#s-main .chip').forEach(el=>el.classList.remove('on'));this.classList.add('on');renderMainList()">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
+    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" onclick="catF='${c}';renderMain()">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
   </div>
   <div class="stat-tabs">
-    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';document.querySelectorAll('#s-main .stab').forEach(el=>el.classList.remove('on'));this.classList.add('on');renderMainList()">${s}</div>`).join('')}
+    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';renderMain()">${s}</div>`).join('')}
   </div>
   <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
 
   if (cachedItems.length) renderMainList(q);
 
   const items = await fetchItems();
-  if (items === null) {
-    const grid = document.querySelector('#s-main .grid');
-    if (grid) grid.innerHTML = `<div class="empty">상품을 불러오지 못했어요 😢<br><span style="font-size:12px;font-weight:400;display:block;margin-top:4px;">인터넷 연결을 확인해 주세요</span><br><button onclick="renderMain('')" style="margin-top:10px;padding:7px 18px;background:var(--pink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">다시 불러오기</button></div>`;
-    return;
-  }
   cachedItems = items;
-  if (!likedItemIdsReady) {
-    likedItemIds = await fetchLikedItemIds(items);
-    likedItemIdsReady = true;
-  }
   renderMainList(q);
+  hydrateMainMeta(q);
 }
 
 function renderMainList(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
 
-  let list = cachedItems.filter(i => {
+  let list = filterMainItems(q);
+
+  const grid = document.querySelector('#s-main .grid');
+  if (!grid) return;
+  grid.innerHTML = list.length
+    ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
+    : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
+}
+
+function filterMainItems(q) {
+  q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
+  return cachedItems.filter(i => {
     const mc = catF === '전체' || i.category === catF;
     const ms = statF === '전체' || (statF === '판매중' && !i.sold) || (statF === '판매완료' && i.sold);
     const mq = !q || i.title.includes(q);
     return mc && ms && mq;
   });
-
-  const grid = document.querySelector('#s-main .grid');
-  if (!grid) return;
-  if (list.length) {
-    grid.innerHTML = list.map(i => cardH(i, likedItemIds.has(i.id))).join('');
-    lazyLoadThumbs(list);
-  } else {
-    grid.innerHTML = `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
-  }
-}
-
-async function lazyLoadThumbs(items) {
-  const need = items.filter(i => !i.emoji);
-  const BATCH = 3;
-  for (let b = 0; b < need.length; b += BATCH) {
-    await Promise.allSettled(need.slice(b, b + BATCH).map(async item => {
-      const { data } = await sb.from('items').select('id, emoji').eq('id', item.id).single();
-      if (!data?.emoji) return;
-      item.emoji = data.emoji;
-      const photos = itemPhotoList(data.emoji);
-      if (!photos.length) return;
-      const el = document.getElementById('thumb-' + item.id);
-      if (el) el.innerHTML = `<img src="${photos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">`;
-    }));
-  }
 }
 
 function cardH(i, liked) {
@@ -646,7 +754,7 @@ function cardH(i, liked) {
     ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
     ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
-    <div class="card-thumb" id="thumb-${i.id}" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
+    <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
     <div class="card-body">
       <div class="card-name">${i.title}</div>
       <div class="card-price">${i.price.toLocaleString()}원</div>
@@ -666,6 +774,8 @@ async function doToggleLike(itemId, btn) {
   if (liked) likedItemIds.add(itemId);
   else likedItemIds.delete(itemId);
   likedItemIdsReady = true;
+  cachedItems = cachedItems.map(i => i.id === itemId ? { ...i, likeCount: Math.max(0, (i.likeCount || 0) + (liked ? 1 : -1)) } : i);
+  if (curItem?.id === itemId) curItem.likeCount = Math.max(0, (curItem.likeCount || 0) + (liked ? 1 : -1));
   btn.textContent = liked ? '❤️' : '🤍';
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
 }
@@ -674,22 +784,36 @@ async function doToggleLike(itemId, btn) {
    상품 상세 화면
 ════════════════════════════════ */
 let curItem = null;
+let editingItemId = null;
 
 async function openDet(id) {
   curId = id;
-  const listItem = cachedItems.find(i => i.id === id);
-  const { data, error } = await sb.from('items').select('*').eq('id', id).single();
-  if (error || !data) { toast('상품을 불러올 수 없어요'); return; }
-  curItem = { ...data, likeCount: listItem?.likeCount || 0, commentCount: listItem?.commentCount || 0 };
-  await renderDet();
+  curItem = cachedItems.find(i => i.id === id);
+  if (!curItem) curItem = { id, title: '상품', price: 0, category: '기타', emoji: '📦', seller_name: '', description: '' };
+  renderDet();
   goTo('s-det');
+
+  try {
+    const { data } = await sb.from('items').select('*').eq('id', id).single();
+    const counts = await fetchItemCounts(data ? [data] : []);
+    curItem = {
+      ...(curItem || {}),
+      ...data,
+      likeCount: counts.likes.get(id) || curItem?.likeCount || 0,
+      commentCount: counts.comments.get(id) || curItem?.commentCount || 0,
+    };
+    cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...curItem } : i);
+    renderDet();
+  } catch (e) {
+    console.error(e);
+  }
 }
 
-async function renderDet() {
+function renderDet() {
   const it = curItem;
   const p = it.seller_name === myN ? myP : (it.seller_photo || '');
   const own = it.seller_name === myN;
-  const liked = await isLiked(it.id);
+  const liked = likedItemIds.has(it.id);
 
   document.getElementById('s-det').innerHTML = `
   <div class="sub-hdr">
@@ -703,7 +827,7 @@ async function renderDet() {
     <div class="det-title">${it.title}</div>
     <div class="det-stats">
       <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> ${it.likeCount}</div>
-      <div class="det-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;"></i> 댓글 <span id="_cmt-cnt">0</span></div>
+      <div class="det-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;"></i> 댓글 <span id="_cmt-cnt">${it.commentCount || 0}</span></div>
     </div>
     <div class="det-desc">${it.description || ''}</div>
     <div class="det-seller">
@@ -711,8 +835,10 @@ async function renderDet() {
       <div class="det-sname">${it.seller_name} 님</div>
       <div class="det-time">${relTime(it.created_at)}</div>
     </div>
-    ${own ? `<button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>
-             <button class="sold-tog" onclick="renderSell(curItem);goTo('s-sell')" style="border-color:var(--pur-br);color:var(--pur-dark);">✏️ 상품 수정</button>
+    ${own ? `<div class="own-actions">
+               <button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>
+               <button class="edit-item-btn" onclick="renderSell(curItem);goTo('s-sell')">수정</button>
+             </div>
              <button class="del-item-btn" id="_delitem" onclick="doDeleteItem()">🗑 상품 삭제</button>` : ''}
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
@@ -724,7 +850,7 @@ async function renderDet() {
     </div>
   </div>`;
 
-  await loadComments();
+  loadComments();
 }
 
 async function loadComments() {
@@ -733,8 +859,10 @@ async function loadComments() {
   const replies = cmts.filter(c => c.parent_id);
   const cnt = document.getElementById('_cmt-cnt');
   if (cnt) cnt.textContent = cmts.length;
-  const cached = cachedItems.find(i => i.id === curId);
-  if (cached) cached.commentCount = cmts.length;
+  if (curItem) {
+    curItem.commentCount = cmts.length;
+    cachedItems = cachedItems.map(i => i.id === curItem.id ? { ...i, commentCount: cmts.length } : i);
+  }
   document.getElementById('_dcl').innerHTML = roots.length
     ? roots.map(c => cmtHTML(c, replies.filter(r => r.parent_id === c.id))).join('')
     : '<p style="font-size:13px;color:var(--text3);font-weight:700;">첫 댓글을 남겨보세요!</p>';
@@ -865,6 +993,8 @@ async function doWishDet(itemId) {
   if (liked) likedItemIds.add(itemId);
   else likedItemIds.delete(itemId);
   likedItemIdsReady = true;
+  cachedItems = cachedItems.map(i => i.id === itemId ? { ...i, likeCount: Math.max(0, (i.likeCount || 0) + (liked ? 1 : -1)) } : i);
+  if (curItem?.id === itemId) curItem.likeCount = Math.max(0, (curItem.likeCount || 0) + (liked ? 1 : -1));
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
   const b1 = document.getElementById('_wbtn');
   const b2 = document.getElementById('_wb2');
@@ -965,24 +1095,27 @@ function saveNick() {
    판매 등록
 ════════════════════════════════ */
 function renderSell(item = null) {
-  editingItem = item;
+  editingItemId = item?.id || null;
   itemPhotos = item ? itemPhotoList(item.emoji) : [];
+  itemThumbs = item ? itemThumbList(item.emoji) : [];
+  const edit = !!item;
   const cats = ['의류', '전자기기', '도서', '생활용품', '취미', '식물', '기타'];
   document.getElementById('s-sell').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
-    <span class="sub-title">${item ? '상품 수정' : '물건 올리기'}</span>
+    <span class="sub-title">${edit ? '상품 수정' : '물건 올리기'}</span>
   </div>
   <div class="sell-body">
-    <div class="fr"><label>사진</label><div class="img-zone${itemPhotos.length ? ' has-img' : ''}" id="_itemphoto" onclick="document.getElementById('f-item').click()">${itemPhotos.length ? itemPhotos.map((p, idx) => `<div class="photo-preview"><img src="${p}" alt="상품 사진 ${idx + 1}"></div>`).join('') : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`}</div></div>
-    <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름" value="${item ? item.title.replace(/"/g, '&quot;') : ''}"></div>
+    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto" onclick="document.getElementById('f-item').click()"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
+    <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름" value="${esc(item?.title)}"></div>
     <div class="fr"><label>카테고리</label>
-      <select id="_nc">${cats.map(c => `<option${item && item.category === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
+      <select id="_nc">${cats.map(c => `<option${item?.category === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
     </div>
-    <div class="fr"><label>가격 (원) *</label><input type="number" id="_np" placeholder="예) 15000" value="${item ? item.price : ''}"></div>
-    <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요">${item ? item.description || '' : ''}</textarea></div>
-    <button class="reg-btn" id="_regbtn" onclick="doAddItem()">${item ? '수정 완료' : '등록하기'}</button>
+    <div class="fr"><label>가격 (원) *</label><input type="number" id="_np" placeholder="예) 15000" value="${item?.price || ''}"></div>
+    <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요">${esc(item?.description)}</textarea></div>
+    <button class="reg-btn" id="_regbtn" onclick="${edit ? 'doUpdateItem()' : 'doAddItem()'}">${edit ? '수정하기' : '등록하기'}</button>
   </div>`;
+  renderItemPhotoZone();
 }
 
 function renderItemPhotoZone() {
@@ -1001,30 +1134,40 @@ async function doAddItem() {
   const d = document.getElementById('_nd').value.trim();
   if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
   const btn = document.getElementById('_regbtn');
-  const isEdit = !!editingItem;
-  btn.textContent = isEdit ? '수정 중...' : '등록 중...'; btn.disabled = true;
+  btn.textContent = '등록 중...'; btn.disabled = true;
   try {
-    if (isEdit) {
-      const newEmoji = itemPhotos.length ? itemPayload(itemPhotos, c) : editingItem.emoji;
-      await updateItem(editingItem.id, { title: t, price: p, category: c, emoji: newEmoji, description: d });
-      const cached = cachedItems.find(i => i.id === editingItem.id);
-      if (cached) Object.assign(cached, { title: t, price: p, category: c, emoji: newEmoji, description: d });
-      if (curItem && curItem.id === editingItem.id) Object.assign(curItem, { title: t, price: p, category: c, emoji: newEmoji, description: d });
-      toast('상품을 수정했어요 ✏️');
-      editingItem = null;
-      goBack();
-      await renderDet();
-    } else {
-      await insertItem({ title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c), description: d });
-      toast('상품이 등록됐어요 🎉');
-      statF = '판매중'; catF = '전체';
-      editingItem = null;
-      goBack();
-      await renderMain('');
-    }
+    await insertItem({ title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c, itemThumbs), description: d });
+    toast('상품이 등록됐어요 🎉');
+    statF = '판매중'; catF = '전체';
+    goBack();
+    await renderMain('');
   } catch (e) {
-    toast(isEdit ? '수정에 실패했어요. 다시 시도해 주세요.' : '등록에 실패했어요. 다시 시도해 주세요.');
-    btn.textContent = isEdit ? '수정 완료' : '등록하기'; btn.disabled = false;
+    toast('등록에 실패했어요. 다시 시도해 주세요.');
+    btn.textContent = '등록하기'; btn.disabled = false;
+  }
+}
+
+async function doUpdateItem() {
+  if (!editingItemId || !curItem) return;
+  const t = document.getElementById('_nt').value.trim();
+  const p = parseInt(document.getElementById('_np').value) || 0;
+  const c = document.getElementById('_nc').value;
+  const d = document.getElementById('_nd').value.trim();
+  if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
+  const btn = document.getElementById('_regbtn');
+  btn.textContent = '수정 중...'; btn.disabled = true;
+  try {
+    const patch = { title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c, itemThumbs), description: d };
+    await updateItem(editingItemId, patch);
+    curItem = { ...curItem, ...patch, seller_photo: myP };
+    cachedItems = cachedItems.map(i => i.id === editingItemId ? { ...i, ...patch, seller_photo: myP } : i);
+    toast('상품을 수정했어요');
+    await renderDet();
+    goBack();
+  } catch (e) {
+    console.error(e);
+    toast('수정에 실패했어요. 다시 시도해 주세요.');
+    btn.textContent = '수정하기'; btn.disabled = false;
   }
 }
 
