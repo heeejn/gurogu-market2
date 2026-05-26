@@ -1710,12 +1710,23 @@ function lbApply(img) {
 
 (function () {
   const lb = document.getElementById('lightbox');
+  let lbCX = 0, lbCY = 0;
+  let lbPinchMidX0 = 0, lbPinchMidY0 = 0;
+  let lbPanX0 = 0, lbPanY0 = 0;
+
   lb.addEventListener('touchstart', e => {
     lbActiveImg = lbCurImg();
     if (e.touches.length === 2) {
       e.preventDefault();
       lbPinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       lbPinchZoom0 = lbZoom;
+      lbPinchMidX0 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      lbPinchMidY0 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      lbPanX0 = lbPanX;
+      lbPanY0 = lbPanY;
+      const galR = document.getElementById('lb-gallery').getBoundingClientRect();
+      lbCX = galR.left + galR.width / 2;
+      lbCY = galR.top + galR.height / 2;
     } else {
       lbTouchSX = e.touches[0].clientX;
       lbTouchSY = e.touches[0].clientY;
@@ -1728,7 +1739,15 @@ function lbApply(img) {
     if (e.touches.length === 2) {
       e.preventDefault();
       const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      lbZoom = Math.min(4, Math.max(1, lbPinchZoom0 * (d / lbPinchDist0)));
+      const newZoom = Math.min(4, Math.max(1, lbPinchZoom0 * (d / lbPinchDist0)));
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const imgPtX = (lbPinchMidX0 - lbCX - lbPanX0) / lbPinchZoom0;
+      const imgPtY = (lbPinchMidY0 - lbCY - lbPanY0) / lbPinchZoom0;
+      lbZoom = newZoom;
+      lbPanX = midX - lbCX - imgPtX * newZoom;
+      lbPanY = midY - lbCY - imgPtY * newZoom;
+      if (lbZoom <= 1) { lbZoom = 1; lbPanX = 0; lbPanY = 0; }
       if (lbActiveImg) { cancelAnimationFrame(lbRafId); lbRafId = requestAnimationFrame(() => lbApply(lbActiveImg)); }
     } else if (e.touches.length === 1 && lbZoom > 1) {
       e.preventDefault();
