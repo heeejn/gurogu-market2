@@ -334,7 +334,7 @@ function goBack() {
   const prev = screenHistory[screenHistory.length - 1];
   document.getElementById(cur).className = 'screen right';
   document.getElementById(prev).className = 'screen active';
-  if (prev === 's-main') renderMain();
+  if (prev === 's-main') renderMainList();
   if (prev === 's-my') renderMy();
 }
 
@@ -369,14 +369,37 @@ document.getElementById('f-item').addEventListener('change', async e => {
    Supabase 데이터 함수
 ════════════════════════════════ */
 async function fetchItems() {
-  const { data, error } = await sb
-    .from('items')
-    .select('*, likes(count)')
-    .order('created_at', { ascending: false });
-  if (error) { console.error(error); return []; }
-  return data
-    .filter(i => i.description !== DELETED_MARK)
-    .map(i => ({ ...i, likeCount: i.likes[0]?.count || 0 }));
+  try {
+    const { data, error } = await sb
+      .from('items')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const filtered = data.filter(i => i.description !== DELETED_MARK);
+    const ids = filtered.map(i => i.id);
+    const likeCounts = {};
+    const commentCounts = {};
+    if (ids.length) {
+      const [likesRes, cmtRes] = await Promise.allSettled([
+        sb.from('likes').select('item_id, user_key').in('item_id', ids),
+        sb.from('comments').select('item_id').in('item_id', ids),
+      ]);
+      if (likesRes.status === 'fulfilled' && likesRes.value.data) {
+        likesRes.value.data.forEach(l => {
+          likeCounts[l.item_id] = (likeCounts[l.item_id] || 0) + 1;
+          if (l.user_key === userKey) likedItemIds.add(l.item_id);
+        });
+        likedItemIdsReady = true;
+      }
+      if (cmtRes.status === 'fulfilled' && cmtRes.value.data) {
+        cmtRes.value.data.forEach(c => { commentCounts[c.item_id] = (commentCounts[c.item_id] || 0) + 1; });
+      }
+    }
+    return filtered.map(i => ({ ...i, likeCount: likeCounts[i.id] || 0, commentCount: commentCounts[i.id] || 0 }));
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 }
 
 async function fetchComments(itemId) {
@@ -398,6 +421,11 @@ async function insertItem({ title, price, category, emoji, description }) {
 
 async function updateSoldStatus(id, sold) {
   await sb.from('items').update({ sold }).eq('id', id);
+}
+
+async function updateItem(id, { title, price, category, emoji, description }) {
+  const { error } = await sb.from('items').update({ title, price, category, emoji, description }).eq('id', id);
+  if (error) throw error;
 }
 
 async function deleteItem(id) {
@@ -504,6 +532,7 @@ async function startApp() {
 let cachedItems = [];
 let likedItemIds = new Set();
 let likedItemIdsReady = false;
+let editingItem = null;
 
 async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
@@ -535,20 +564,26 @@ async function renderMain(q) {
     </div>
   </div>
   <div class="filter-bar">
-    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" onclick="catF='${c}';renderMain()">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
+    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" onclick="catF='${c}';document.querySelectorAll('#s-main .chip').forEach(el=>el.classList.remove('on'));this.classList.add('on');renderMainList()">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
   </div>
   <div class="stat-tabs">
-    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';renderMain()">${s}</div>`).join('')}
+    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';document.querySelectorAll('#s-main .stab').forEach(el=>el.classList.remove('on'));this.classList.add('on');renderMainList()">${s}</div>`).join('')}
   </div>
   <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
 
   if (cachedItems.length) renderMainList(q);
 
   const items = await fetchItems();
+  if (items === null) {
+    const grid = document.querySelector('#s-main .grid');
+    if (grid) grid.innerHTML = `<div class="empty">상품을 불러오지 못했어요 😢<br><span style="font-size:12px;font-weight:400;display:block;margin-top:4px;">인터넷 연결을 확인해 주세요</span><br><button onclick="renderMain('')" style="margin-top:10px;padding:7px 18px;background:var(--pink);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">다시 불러오기</button></div>`;
+    return;
+  }
   cachedItems = items;
-  likedItemIds = await fetchLikedItemIds(items);
-  likedItemIdsReady = true;
-
+  if (!likedItemIdsReady) {
+    likedItemIds = await fetchLikedItemIds(items);
+    likedItemIdsReady = true;
+  }
   renderMainList(q);
 }
 
@@ -583,7 +618,7 @@ function cardH(i, liked) {
         <div class="card-sub-l"><div class="mini-av">${av(p, i.seller_name, 13)}</div><span>${i.seller_name}</span></div>
         <div class="card-sub-r">
           <div class="card-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:10px;"></i>${i.likeCount}</div>
-          <div class="card-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:10px;"></i>${i.comment_count || 0}</div>
+          <div class="card-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:10px;"></i>${i.commentCount || 0}</div>
         </div>
       </div>
     </div>
@@ -642,6 +677,7 @@ async function renderDet() {
       <div class="det-time">${relTime(it.created_at)}</div>
     </div>
     ${own ? `<button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>
+             <button class="sold-tog" onclick="renderSell(curItem);goTo('s-sell')" style="border-color:var(--pur-br);color:var(--pur-dark);">✏️ 상품 수정</button>
              <button class="del-item-btn" id="_delitem" onclick="doDeleteItem()">🗑 상품 삭제</button>` : ''}
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
@@ -662,6 +698,8 @@ async function loadComments() {
   const replies = cmts.filter(c => c.parent_id);
   const cnt = document.getElementById('_cmt-cnt');
   if (cnt) cnt.textContent = cmts.length;
+  const cached = cachedItems.find(i => i.id === curId);
+  if (cached) cached.commentCount = cmts.length;
   document.getElementById('_dcl').innerHTML = roots.length
     ? roots.map(c => cmtHTML(c, replies.filter(r => r.parent_id === c.id))).join('')
     : '<p style="font-size:13px;color:var(--text3);font-weight:700;">첫 댓글을 남겨보세요!</p>';
@@ -891,22 +929,24 @@ function saveNick() {
 /* ════════════════════════════════
    판매 등록
 ════════════════════════════════ */
-function renderSell() {
-  itemPhotos = [];
+function renderSell(item = null) {
+  editingItem = item;
+  itemPhotos = item ? itemPhotoList(item.emoji) : [];
+  const cats = ['의류', '전자기기', '도서', '생활용품', '취미', '식물', '기타'];
   document.getElementById('s-sell').innerHTML = `
   <div class="sub-hdr">
     <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
-    <span class="sub-title">물건 올리기</span>
+    <span class="sub-title">${item ? '상품 수정' : '물건 올리기'}</span>
   </div>
   <div class="sell-body">
-    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto" onclick="document.getElementById('f-item').click()"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
-    <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름"></div>
+    <div class="fr"><label>사진</label><div class="img-zone${itemPhotos.length ? ' has-img' : ''}" id="_itemphoto" onclick="document.getElementById('f-item').click()">${itemPhotos.length ? itemPhotos.map((p, idx) => `<div class="photo-preview"><img src="${p}" alt="상품 사진 ${idx + 1}"></div>`).join('') : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`}</div></div>
+    <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름" value="${item ? item.title.replace(/"/g, '&quot;') : ''}"></div>
     <div class="fr"><label>카테고리</label>
-      <select id="_nc"><option>의류</option><option>전자기기</option><option>도서</option><option>생활용품</option><option>취미</option><option>식물</option><option>기타</option></select>
+      <select id="_nc">${cats.map(c => `<option${item && item.category === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
     </div>
-    <div class="fr"><label>가격 (원) *</label><input type="number" id="_np" placeholder="예) 15000"></div>
-    <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요"></textarea></div>
-    <button class="reg-btn" id="_regbtn" onclick="doAddItem()">등록하기</button>
+    <div class="fr"><label>가격 (원) *</label><input type="number" id="_np" placeholder="예) 15000" value="${item ? item.price : ''}"></div>
+    <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요">${item ? item.description || '' : ''}</textarea></div>
+    <button class="reg-btn" id="_regbtn" onclick="doAddItem()">${item ? '수정 완료' : '등록하기'}</button>
   </div>`;
 }
 
@@ -926,16 +966,30 @@ async function doAddItem() {
   const d = document.getElementById('_nd').value.trim();
   if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
   const btn = document.getElementById('_regbtn');
-  btn.textContent = '등록 중...'; btn.disabled = true;
+  const isEdit = !!editingItem;
+  btn.textContent = isEdit ? '수정 중...' : '등록 중...'; btn.disabled = true;
   try {
-    await insertItem({ title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c), description: d });
-    toast('상품이 등록됐어요 🎉');
-    statF = '판매중'; catF = '전체';
-    goBack();
-    await renderMain('');
+    if (isEdit) {
+      const newEmoji = itemPhotos.length ? itemPayload(itemPhotos, c) : editingItem.emoji;
+      await updateItem(editingItem.id, { title: t, price: p, category: c, emoji: newEmoji, description: d });
+      const cached = cachedItems.find(i => i.id === editingItem.id);
+      if (cached) Object.assign(cached, { title: t, price: p, category: c, emoji: newEmoji, description: d });
+      if (curItem && curItem.id === editingItem.id) Object.assign(curItem, { title: t, price: p, category: c, emoji: newEmoji, description: d });
+      toast('상품을 수정했어요 ✏️');
+      editingItem = null;
+      goBack();
+      await renderDet();
+    } else {
+      await insertItem({ title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c), description: d });
+      toast('상품이 등록됐어요 🎉');
+      statF = '판매중'; catF = '전체';
+      editingItem = null;
+      goBack();
+      await renderMain('');
+    }
   } catch (e) {
-    toast('등록에 실패했어요. 다시 시도해 주세요.');
-    btn.textContent = '등록하기'; btn.disabled = false;
+    toast(isEdit ? '수정에 실패했어요. 다시 시도해 주세요.' : '등록에 실패했어요. 다시 시도해 주세요.');
+    btn.textContent = isEdit ? '수정 완료' : '등록하기'; btn.disabled = false;
   }
 }
 
