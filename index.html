@@ -286,27 +286,33 @@ function logoImg() {
 function isImg(v) {
   return typeof v === 'string' && v.startsWith('data:image/');
 }
+function isImgUrl(v) {
+  return typeof v === 'string' && /^https?:\/\//.test(v);
+}
+function isPhotoRef(v) {
+  return isImg(v) || isImgUrl(v);
+}
 function itemPhotoList(v) {
   if (!v) return [];
-  if (isImg(v)) return [v];
+  if (isPhotoRef(v)) return [v];
   if (typeof v !== 'string' || (v[0] !== '[' && v[0] !== '{')) return [];
   try {
     const parsed = JSON.parse(v);
-    if (parsed && Array.isArray(parsed.photos)) return parsed.photos.filter(isImg);
-    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
+    if (parsed && Array.isArray(parsed.photos)) return parsed.photos.filter(isPhotoRef);
+    return Array.isArray(parsed) ? parsed.filter(isPhotoRef) : [];
   } catch (e) {
     return [];
   }
 }
 function itemThumbList(v) {
   if (!v) return [];
-  if (isImg(v)) return [v];
+  if (isPhotoRef(v)) return [v];
   if (typeof v !== 'string' || (v[0] !== '[' && v[0] !== '{')) return [];
   try {
     const parsed = JSON.parse(v);
-    if (parsed && Array.isArray(parsed.thumbs)) return parsed.thumbs.filter(isImg);
-    if (parsed && Array.isArray(parsed.photos)) return parsed.photos.filter(isImg);
-    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
+    if (parsed && Array.isArray(parsed.thumbs)) return parsed.thumbs.filter(isPhotoRef);
+    if (parsed && Array.isArray(parsed.photos)) return parsed.photos.filter(isPhotoRef);
+    return Array.isArray(parsed) ? parsed.filter(isPhotoRef) : [];
   } catch (e) {
     return [];
   }
@@ -339,7 +345,7 @@ function isThumbOnlyPayload(v) {
   catch (e) { return false; }
 }
 function plainEmoji(v) {
-  return typeof v === 'string' && v && !isImg(v) && v[0] !== '[' && v[0] !== '{' ? v : '';
+  return typeof v === 'string' && v && !isPhotoRef(v) && v[0] !== '[' && v[0] !== '{' ? v : '';
 }
 function rememberItemThumb(id, thumb) {
   if (!id || !thumb) return;
@@ -347,10 +353,15 @@ function rememberItemThumb(id, thumb) {
   catch (e) { console.warn('썸네일 캐시 저장 실패', e); }
 }
 function rememberItemThumbs(id, thumbs) {
-  const clean = (thumbs || []).filter(isImg);
+  const clean = (thumbs || []).filter(isPhotoRef);
   if (!id || !clean.length) return;
   try { localStorage.setItem(PHOTO_CACHE_PREFIX + id, JSON.stringify(clean)); }
   catch (e) { rememberItemThumb(id, clean[0]); }
+}
+function itemRecordPayload(item) {
+  const photos = Array.isArray(item?.photo_urls) ? item.photo_urls.filter(isPhotoRef) : [];
+  const thumbs = item?.thumbnail_url ? [item.thumbnail_url] : [];
+  return photos.length || thumbs.length ? itemPayload(photos, item.category, thumbs) : '';
 }
 function getCachedComments(id) {
   try {
@@ -483,6 +494,40 @@ function makeThumbFromDataUrl(src, max = 360, quality = .68) {
     img.src = src;
   });
 }
+function dataUrlToBlob(dataUrl) {
+  const [head, body] = dataUrl.split(',');
+  const mime = (head.match(/data:(.*?);/) || [])[1] || 'image/jpeg';
+  const bin = atob(body || '');
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+async function uploadImageDataUrl(dataUrl, folder = 'items') {
+  if (isImgUrl(dataUrl)) return dataUrl;
+  const blob = dataUrlToBlob(dataUrl);
+  const path = `${folder}/${userKey}/${Date.now()}-${crypto.randomUUID()}.jpg`;
+  const { error } = await sb.storage
+    .from('item-images')
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw error;
+  const { data } = sb.storage.from('item-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+async function uploadItemImages(photos, thumbs) {
+  const photoUrls = [];
+  for (const photo of photos) {
+    photoUrls.push(isImgUrl(photo) ? photo : await uploadImageDataUrl(photo, 'items'));
+  }
+
+  let thumbnailUrl = '';
+  if (thumbs[0]) {
+    thumbnailUrl = isImgUrl(thumbs[0]) ? thumbs[0] : await uploadImageDataUrl(thumbs[0], 'thumbs');
+  } else if (photoUrls[0]) {
+    thumbnailUrl = photoUrls[0];
+  }
+
+  return { photoUrls, thumbnailUrl };
+}
 document.getElementById('f-init').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
   myP = await readFile(f);
@@ -507,16 +552,26 @@ document.getElementById('f-item').addEventListener('change', async e => {
    Supabase 데이터 함수
 ════════════════════════════════ */
 async function fetchItems() {
-  const { data, error } = await sb
+  let { data, error } = await sb
     .from('items')
-    .select('id,title,price,category,description,seller_name,sold,created_at')
+    .select('id,title,price,category,description,seller_name,sold,created_at,thumbnail_url,photo_urls')
     .order('created_at', { ascending: false })
     .limit(60);
+  if (error?.code === '42703') {
+    console.warn('photo_urls/thumbnail_url 컬럼이 아직 없어 기존 방식으로 불러옵니다.', error);
+    const fallback = await sb
+      .from('items')
+      .select('id,title,price,category,description,seller_name,sold,created_at')
+      .order('created_at', { ascending: false })
+      .limit(60);
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error) { console.error(JSON.stringify(error)); return []; }
-  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
-    ...i,
-    emoji: cachedThumbPayload(i.id),
-    seller_photo: '',
+	  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
+	    ...i,
+	    emoji: itemRecordPayload(i) || cachedThumbPayload(i.id),
+	    seller_photo: '',
     likeCount: i.likeCount || 0,
     commentCount: i.commentCount || 0,
 	  }));
@@ -590,15 +645,24 @@ async function hydrateItemPhotos(id, q) {
 
   const promise = (async () => {
     hydratingPhotoIds.add(id);
-    const { data, error } = await sb
+    let { data, error } = await sb
       .from('items')
-      .select('id,emoji,seller_photo,category')
+      .select('id,emoji,seller_photo,category,thumbnail_url,photo_urls')
       .eq('id', id)
       .single();
+    if (error?.code === '42703') {
+      const fallback = await sb
+        .from('items')
+        .select('id,emoji,seller_photo,category')
+        .eq('id', id)
+        .single();
+      data = fallback.data;
+      error = fallback.error;
+    }
     hydratingPhotoIds.delete(id);
     if (error || !data) return existing;
 
-    let nextEmoji = data.emoji || '';
+    let nextEmoji = itemRecordPayload(data) || data.emoji || '';
     const photos = itemPhotoList(nextEmoji);
     let thumbs = itemThumbList(nextEmoji);
     if (photos.length && (!thumbs.length || thumbs[0] === photos[0] || thumbs[0].length > 140000 || thumbs.length < photos.length)) {
@@ -637,19 +701,43 @@ async function fetchComments(itemId) {
   return data || [];
 }
 
-async function insertItem({ title, price, category, emoji, description }) {
-  const { error } = await sb.from('items').insert({
+async function insertItem({ title, price, category, emoji, description, photoUrls = [], thumbnailUrl = '' }) {
+  let { error } = await sb.from('items').insert({
     title, price, category, emoji, description,
+    photo_urls: photoUrls,
+    thumbnail_url: thumbnailUrl || null,
     seller_name: myN, seller_photo: myP,
   });
+  if (error?.code === '42703') {
+    console.warn('Storage URL 컬럼이 없어 기존 emoji 방식으로 저장합니다.', error);
+    const fallback = await sb.from('items').insert({
+      title, price, category,
+      emoji: itemPayload(itemPhotos, category, itemThumbs),
+      description,
+      seller_name: myN, seller_photo: myP,
+    });
+    error = fallback.error;
+  }
   if (error) throw error;
 }
 
-async function updateItem(id, { title, price, category, emoji, description }) {
-  const { error } = await sb.from('items').update({
+async function updateItem(id, { title, price, category, emoji, description, photoUrls = [], thumbnailUrl = '' }) {
+  let { error } = await sb.from('items').update({
     title, price, category, emoji, description,
+    photo_urls: photoUrls,
+    thumbnail_url: thumbnailUrl || null,
     seller_photo: myP,
   }).eq('id', id);
+  if (error?.code === '42703') {
+    console.warn('Storage URL 컬럼이 없어 기존 emoji 방식으로 수정합니다.', error);
+    const fallback = await sb.from('items').update({
+      title, price, category,
+      emoji: itemPayload(itemPhotos, category, itemThumbs),
+      description,
+      seller_photo: myP,
+    }).eq('id', id);
+    error = fallback.error;
+  }
   if (error) throw error;
 }
 
@@ -935,11 +1023,13 @@ async function openDet(id) {
   try {
     const { data } = await sb.from('items').select('*').eq('id', id).single();
     if (!data || curId !== id) return;
-    const thumbs = itemThumbList(data.emoji);
+    const dataEmoji = itemRecordPayload(data) || data.emoji;
+    const thumbs = itemThumbList(dataEmoji);
     if (thumbs[0]) rememberItemThumbs(id, thumbs);
     curItem = {
       ...(curItem || {}),
       ...data,
+      emoji: dataEmoji,
       likeCount: curItem?.likeCount || 0,
       commentCount: curItem?.commentCount || 0,
     };
@@ -1316,8 +1406,9 @@ function saveNick() {
 ════════════════════════════════ */
 function renderSell(item = null) {
   editingItemId = item?.id || null;
-  itemPhotos = item ? itemPhotoList(item.emoji) : [];
-  itemThumbs = item ? itemThumbList(item.emoji) : [];
+  const itemMediaPayload = item ? (itemRecordPayload(item) || item.emoji) : '';
+  itemPhotos = item ? itemPhotoList(itemMediaPayload) : [];
+  itemThumbs = item ? itemThumbList(itemMediaPayload) : [];
   const edit = !!item;
   const cats = ['의류', '전자기기', '도서', '생활용품', '취미', '식물', '기타'];
   document.getElementById('s-sell').innerHTML = `
@@ -1353,11 +1444,17 @@ async function doAddItem() {
   const c = document.getElementById('_nc').value;
   const d = document.getElementById('_nd').value.trim();
   if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
-  const btn = document.getElementById('_regbtn');
-  btn.textContent = '등록 중...'; btn.disabled = true;
-  try {
-    await insertItem({ title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c, itemThumbs), description: d });
-    toast('상품이 등록됐어요 🎉');
+	  const btn = document.getElementById('_regbtn');
+	  btn.textContent = '등록 중...'; btn.disabled = true;
+	  try {
+	    const uploaded = await uploadItemImages(itemPhotos, itemThumbs);
+	    await insertItem({
+	      title: t, price: p, category: c, description: d,
+	      emoji: emM[c] || '📦',
+	      photoUrls: uploaded.photoUrls,
+	      thumbnailUrl: uploaded.thumbnailUrl,
+	    });
+	    toast('상품이 등록됐어요 🎉');
     statF = '판매중'; catF = '전체';
     goBack();
     await renderMain('');
@@ -1374,13 +1471,25 @@ async function doUpdateItem() {
   const c = document.getElementById('_nc').value;
   const d = document.getElementById('_nd').value.trim();
   if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
-  const btn = document.getElementById('_regbtn');
-  btn.textContent = '수정 중...'; btn.disabled = true;
-  try {
-    const patch = { title: t, price: p, category: c, emoji: itemPayload(itemPhotos, c, itemThumbs), description: d };
-    await updateItem(editingItemId, patch);
-    curItem = { ...curItem, ...patch, seller_photo: myP };
-    cachedItems = cachedItems.map(i => i.id === editingItemId ? { ...i, ...patch, seller_photo: myP } : i);
+	  const btn = document.getElementById('_regbtn');
+	  btn.textContent = '수정 중...'; btn.disabled = true;
+	  try {
+	    const uploaded = await uploadItemImages(itemPhotos, itemThumbs);
+	    const patch = {
+	      title: t, price: p, category: c, description: d,
+	      emoji: emM[c] || '📦',
+	      photoUrls: uploaded.photoUrls,
+	      thumbnailUrl: uploaded.thumbnailUrl,
+	    };
+	    await updateItem(editingItemId, patch);
+	    const mediaPatch = {
+	      ...patch,
+	      photo_urls: uploaded.photoUrls,
+	      thumbnail_url: uploaded.thumbnailUrl,
+	      emoji: itemPayload(uploaded.photoUrls, c, uploaded.thumbnailUrl ? [uploaded.thumbnailUrl] : []),
+	    };
+	    curItem = { ...curItem, ...mediaPatch, seller_photo: myP };
+	    cachedItems = cachedItems.map(i => i.id === editingItemId ? { ...i, ...mediaPatch, seller_photo: myP } : i);
     toast('상품을 수정했어요');
     await renderDet();
     goBack();
