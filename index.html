@@ -110,11 +110,11 @@
     .det-time { font-size: 11px; color: var(--text3); margin-left: auto; }
     .wish-btn { background: var(--surface); border: .5px solid var(--br2); border-radius: 10px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 17px; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
     .wish-btn.on { border-color: var(--pink-br); }
-    .own-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 13px; }
-    .own-actions button { margin-bottom: 0; }
-    .sold-tog { width: 100%; background: var(--bg); border: .5px solid var(--br2); color: var(--text2); border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
-    .edit-item-btn { width: 100%; background: var(--teal-bg); border: .5px solid var(--teal-br); color: var(--teal-dark); border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
-    .del-item-btn { width: 100%; background: #FFF5F6; border: .5px solid #F2B8C2; color: #B4233B; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; text-align: left; }
+    .own-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 13px; }
+    .own-actions button { min-width: 0; margin-bottom: 0; white-space: normal; line-height: 1.25; text-align: center; }
+    .sold-tog { width: 100%; background: var(--bg); border: .5px solid var(--br2); color: var(--text2); border-radius: 10px; padding: 10px 6px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 13px; }
+    .edit-item-btn { width: 100%; background: var(--teal-bg); border: .5px solid var(--teal-br); color: var(--teal-dark); border-radius: 10px; padding: 10px 6px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; }
+    .del-item-btn { width: 100%; background: #FFF5F6; border: .5px solid #F2B8C2; color: #B4233B; border-radius: 10px; padding: 10px 6px; font-size: 12px; font-weight: 800; cursor: pointer; font-family: inherit; margin-bottom: 13px; }
     .del-item-btn:disabled { opacity: .6; cursor: default; }
 
     /* ─── 댓글 ─── */
@@ -264,6 +264,10 @@ let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
 const PHOTO_CACHE_PREFIX = 'gurogu_item_thumb_';
 const hydratingPhotoIds = new Set();
+const hydratedPhotoIds = new Set();
+const commentCache = new Map();
+const commentsLoading = new Set();
+const commentTextMap = new Map();
 let userKey = localStorage.getItem('gurogu_userkey') || (() => {
   const k = crypto.randomUUID(); localStorage.setItem('gurogu_userkey', k); return k;
 })();
@@ -313,7 +317,12 @@ function getCachedThumb(id) {
 }
 function cachedThumbPayload(id) {
   const thumb = getCachedThumb(id);
-  return thumb ? JSON.stringify({ photos: [thumb], thumbs: [thumb] }) : '';
+  return thumb ? JSON.stringify({ photos: [], thumbs: [thumb], thumbOnly: true }) : '';
+}
+function isThumbOnlyPayload(v) {
+  if (typeof v !== 'string' || v[0] !== '{') return false;
+  try { return !!JSON.parse(v).thumbOnly; }
+  catch (e) { return false; }
 }
 function rememberItemThumb(id, thumb) {
   if (!id || !thumb) return;
@@ -327,7 +336,8 @@ function itemMedia(v, category) {
 function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   if (!photos.length) {
-    return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${v || emM[category] || '📦'}</div>`;
+    const fallback = typeof v === 'string' && v && v[0] !== '[' && v[0] !== '{' ? v : '<i class="ti ti-photo" aria-hidden="true"></i>';
+    return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${fallback}</div>`;
   }
   return photos.map(p => `<div class="det-img"><img src="${p}" alt="상품 사진"></div>`).join('');
 }
@@ -373,7 +383,10 @@ function goBack() {
   const prev = screenHistory[screenHistory.length - 1];
   document.getElementById(cur).className = 'screen right';
   document.getElementById(prev).className = 'screen active';
-  if (prev === 's-main') renderMain();
+  if (prev === 's-main') {
+    renderMainList();
+    hydrateMainMeta(document.getElementById('_sq')?.value || '');
+  }
   if (prev === 's-my') renderMy();
 }
 
@@ -436,7 +449,7 @@ document.getElementById('f-edit').addEventListener('change', async e => {
 document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
-  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 900, .76)));
+  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 720, .72)));
   itemThumbs = await Promise.all(files.map(f => readItemImage(f, 360, .68)));
   renderItemPhotoZone();
 });
@@ -457,7 +470,24 @@ async function fetchItems() {
     seller_photo: '',
     likeCount: i.likeCount || 0,
     commentCount: i.commentCount || 0,
-  }));
+	  }));
+	}
+
+function mergeFetchedItems(freshItems) {
+  const oldById = new Map(cachedItems.map(i => [i.id, i]));
+  return freshItems.map(i => {
+    const old = oldById.get(i.id);
+    if (!old) return i;
+    const oldHasMedia = itemThumbList(old.emoji).length || itemPhotoList(old.emoji).length;
+    const freshHasMedia = itemThumbList(i.emoji).length || itemPhotoList(i.emoji).length;
+    return {
+      ...i,
+      emoji: oldHasMedia && !freshHasMedia ? old.emoji : i.emoji,
+      seller_photo: old.seller_photo || i.seller_photo,
+      likeCount: old.likeCount || i.likeCount || 0,
+      commentCount: old.commentCount || i.commentCount || 0,
+    };
+  });
 }
 
 async function fetchItemCounts(items) {
@@ -494,9 +524,10 @@ async function fetchItemPhotos(ids) {
 }
 
 async function hydrateVisiblePhotos(ids, q) {
-  for (const id of ids) {
+  await Promise.all(ids.map(async id => {
     const existing = cachedItems.find(i => i.id === id);
-    if (hydratingPhotoIds.has(id) || itemThumbList(existing?.emoji).length) continue;
+    const hasFullPhotos = itemPhotoList(existing?.emoji).length && !isThumbOnlyPayload(existing?.emoji);
+    if (hydratedPhotoIds.has(id) || hydratingPhotoIds.has(id) || hasFullPhotos) return;
     hydratingPhotoIds.add(id);
     const { data, error } = await sb
       .from('items')
@@ -504,7 +535,7 @@ async function hydrateVisiblePhotos(ids, q) {
       .eq('id', id)
       .single();
     hydratingPhotoIds.delete(id);
-    if (error || !data) continue;
+    if (error || !data) return;
 
     let nextEmoji = data.emoji || '';
     const photos = itemPhotoList(nextEmoji);
@@ -518,6 +549,7 @@ async function hydrateVisiblePhotos(ids, q) {
       });
     }
     if (thumbs[0]) rememberItemThumb(id, thumbs[0]);
+    hydratedPhotoIds.add(id);
 
     cachedItems = cachedItems.map(i => i.id === id ? {
       ...i,
@@ -525,15 +557,16 @@ async function hydrateVisiblePhotos(ids, q) {
       seller_photo: data.seller_photo || '',
     } : i);
     renderMainList(q);
-  }
+  }));
 }
 
 async function fetchComments(itemId) {
-  const { data } = await sb
+  const { data, error } = await sb
     .from('comments')
-    .select('*')
+    .select('id,item_id,parent_id,author_name,content,created_at')
     .eq('item_id', itemId)
     .order('created_at', { ascending: true });
+  if (error) { console.error(error); return []; }
   return data || [];
 }
 
@@ -721,7 +754,7 @@ async function renderMain(q) {
   if (cachedItems.length) renderMainList(q);
 
   const items = await fetchItems();
-  cachedItems = items;
+  cachedItems = mergeFetchedItems(items);
   renderMainList(q);
   hydrateMainMeta(q);
 }
@@ -795,15 +828,27 @@ async function openDet(id) {
 
   try {
     const { data } = await sb.from('items').select('*').eq('id', id).single();
-    const counts = await fetchItemCounts(data ? [data] : []);
+    if (!data || curId !== id) return;
+    const thumbs = itemThumbList(data.emoji);
+    if (thumbs[0]) rememberItemThumb(id, thumbs[0]);
     curItem = {
       ...(curItem || {}),
       ...data,
-      likeCount: counts.likes.get(id) || curItem?.likeCount || 0,
-      commentCount: counts.comments.get(id) || curItem?.commentCount || 0,
+      likeCount: curItem?.likeCount || 0,
+      commentCount: curItem?.commentCount || 0,
     };
     cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...curItem } : i);
     renderDet();
+    fetchItemCounts([data]).then(counts => {
+      if (curId !== id || !curItem) return;
+      curItem.likeCount = counts.likes.get(id) || curItem.likeCount || 0;
+      curItem.commentCount = counts.comments.get(id) || curItem.commentCount || 0;
+      cachedItems = cachedItems.map(i => i.id === id ? { ...i, likeCount: curItem.likeCount, commentCount: curItem.commentCount } : i);
+      const heart = document.getElementById('_det-like-cnt');
+      const cmt = document.getElementById('_cmt-cnt');
+      if (heart) heart.textContent = curItem.likeCount;
+      if (cmt && !commentCache.has(id)) cmt.textContent = curItem.commentCount || 0;
+    });
   } catch (e) {
     console.error(e);
   }
@@ -826,7 +871,7 @@ function renderDet() {
     <div class="det-price">${it.price.toLocaleString()}원</div>
     <div class="det-title">${it.title}</div>
     <div class="det-stats">
-      <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> ${it.likeCount}</div>
+      <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> <span id="_det-like-cnt">${it.likeCount || 0}</span></div>
       <div class="det-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;"></i> 댓글 <span id="_cmt-cnt">${it.commentCount || 0}</span></div>
     </div>
     <div class="det-desc">${it.description || ''}</div>
@@ -836,10 +881,10 @@ function renderDet() {
       <div class="det-time">${relTime(it.created_at)}</div>
     </div>
     ${own ? `<div class="own-actions">
-               <button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경'}</button>
-               <button class="edit-item-btn" onclick="renderSell(curItem);goTo('s-sell')">수정</button>
-             </div>
-             <button class="del-item-btn" id="_delitem" onclick="doDeleteItem()">🗑 상품 삭제</button>` : ''}
+	               <button class="sold-tog" id="_stog" onclick="doToggleSold()">${it.sold ? '판매중 변경' : '판매완료'}</button>
+	               <button class="edit-item-btn" onclick="renderSell(curItem);goTo('s-sell')">수정</button>
+	               <button class="del-item-btn" id="_delitem" onclick="doDeleteItem()">삭제</button>
+	             </div>` : ''}
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
@@ -850,11 +895,25 @@ function renderDet() {
     </div>
   </div>`;
 
-  loadComments();
+  loadComments(it.id);
 }
 
-async function loadComments() {
-  const cmts = await fetchComments(curId);
+async function loadComments(itemId = curId, force = false) {
+  if (!itemId) return;
+  if (!force && commentCache.has(itemId)) {
+    renderComments(itemId, commentCache.get(itemId));
+    return;
+  }
+  if (commentsLoading.has(itemId)) return;
+  commentsLoading.add(itemId);
+  const cmts = await fetchComments(itemId);
+  commentsLoading.delete(itemId);
+  commentCache.set(itemId, cmts);
+  renderComments(itemId, cmts);
+}
+
+function renderComments(itemId, cmts) {
+  if (curId !== itemId) return;
   const roots = cmts.filter(c => !c.parent_id);
   const replies = cmts.filter(c => c.parent_id);
   const cnt = document.getElementById('_cmt-cnt');
@@ -863,24 +922,27 @@ async function loadComments() {
     curItem.commentCount = cmts.length;
     cachedItems = cachedItems.map(i => i.id === curItem.id ? { ...i, commentCount: cmts.length } : i);
   }
-  document.getElementById('_dcl').innerHTML = roots.length
+  const list = document.getElementById('_dcl');
+  if (!list) return;
+  list.innerHTML = roots.length
     ? roots.map(c => cmtHTML(c, replies.filter(r => r.parent_id === c.id))).join('')
     : '<p style="font-size:13px;color:var(--text3);font-weight:700;">첫 댓글을 남겨보세요!</p>';
 }
 
 function cmtHTML(c, reps) {
   const isMine = c.author_name === myN;
+  commentTextMap.set(c.id, c.content || '');
   return `<div class="cmt-item" id="cmt-${c.id}">
     <div class="cmt-top">
       <div class="cmt-av">${av(c.author_photo, c.author_name, 22)}</div>
-      <span class="cmt-nick">${c.author_name}</span>
+      <span class="cmt-nick">${esc(c.author_name)}</span>
       <span class="cmt-time">${relTime(c.created_at)}</span>
     </div>
-    <div class="cmt-text" id="ctxt-${c.id}">${c.content}</div>
+    <div class="cmt-text" id="ctxt-${c.id}">${esc(c.content)}</div>
     <div class="cmt-acts">
       <button class="ca" onclick="toggleRepForm('${c.id}')">↩ 답글</button>
-      ${isMine ? `<button class="ca" onclick="startEditCmt('${c.id}','${c.content.replace(/'/g,"\\'")}')">수정</button>
-                  <button class="ca" onclick="doDelCmt('${c.id}')">삭제</button>` : ''}
+      ${isMine ? `<button class="ca" onclick="startEditCmt('${c.id}')">수정</button>
+	                  <button class="ca" onclick="doDelCmt('${c.id}')">삭제</button>` : ''}
     </div>
     <div id="rep-form-${c.id}" style="display:none;" class="rep-form">
       <input class="rep-inp" id="ri-${c.id}" type="text" placeholder="답글 입력" maxlength="200">
@@ -892,17 +954,18 @@ function cmtHTML(c, reps) {
 
 function repHTML(r) {
   const isMine = r.author_name === myN;
+  commentTextMap.set(r.id, r.content || '');
   return `<div class="rep-item" id="cmt-${r.id}">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
       <div style="display:flex;align-items:center;gap:5px;">
         <div class="cmt-av">${av(r.author_photo, r.author_name, 18)}</div>
-        <span class="rep-nick">${r.author_name}</span>
+        <span class="rep-nick">${esc(r.author_name)}</span>
       </div>
       <span style="font-size:10px;color:var(--text3);">${relTime(r.created_at)}</span>
     </div>
-    <div class="rep-text" id="ctxt-${r.id}">${r.content}</div>
+    <div class="rep-text" id="ctxt-${r.id}">${esc(r.content)}</div>
     ${isMine ? `<div class="rep-acts">
-      <button class="ca" onclick="startEditCmt('${r.id}','${r.content.replace(/'/g,"\\'")}')">수정</button>
+      <button class="ca" onclick="startEditCmt('${r.id}')">수정</button>
       <button class="ca" onclick="doDelCmt('${r.id}')">삭제</button>
     </div>` : ''}
   </div>`;
@@ -914,13 +977,14 @@ function toggleRepForm(cid) {
   if (f.style.display === 'flex') document.getElementById('ri-' + cid)?.focus();
 }
 
-function startEditCmt(id, oldText) {
+function startEditCmt(id) {
   const txtEl = document.getElementById('ctxt-' + id);
   if (!txtEl) return;
+  const oldText = commentTextMap.get(id) || '';
   txtEl.innerHTML = `<div style="display:flex;gap:5px;margin-top:4px;">
-    <input class="rep-inp" id="edit-inp-${id}" value="${oldText}" style="flex:1;height:32px;">
+    <input class="rep-inp" id="edit-inp-${id}" value="${esc(oldText)}" style="flex:1;height:32px;">
     <button class="rep-post" onclick="doSaveCmt('${id}')">저장</button>
-    <button class="ca" onclick="loadComments()">취소</button>
+    <button class="ca" onclick="renderComments(curId, commentCache.get(curId) || [])">취소</button>
   </div>`;
   document.getElementById('edit-inp-' + id)?.focus();
 }
@@ -930,14 +994,16 @@ async function doAddCmt() {
   const v = inp.value.trim(); if (!v) return;
   inp.value = '';
   await insertComment(curId, v);
-  await loadComments();
+  commentCache.delete(curId);
+  await loadComments(curId, true);
 }
 
 async function doAddRep(parentId) {
   const inp = document.getElementById('ri-' + parentId);
   const v = inp?.value.trim(); if (!v) return;
   await insertComment(curId, v, parentId);
-  await loadComments();
+  commentCache.delete(curId);
+  await loadComments(curId, true);
 }
 
 async function doSaveCmt(id) {
@@ -945,21 +1011,23 @@ async function doSaveCmt(id) {
   const v = inp?.value.trim(); if (!v) return;
   await updateComment(id, v);
   toast('댓글을 수정했어요');
-  await loadComments();
+  commentCache.delete(curId);
+  await loadComments(curId, true);
 }
 
 async function doDelCmt(id) {
   if (!confirm('댓글을 삭제할까요?')) return;
   await deleteComment(id);
   toast('댓글을 삭제했어요');
-  await loadComments();
+  commentCache.delete(curId);
+  await loadComments(curId, true);
 }
 
 async function doToggleSold() {
   curItem.sold = !curItem.sold;
   await updateSoldStatus(curId, curItem.sold);
   const btn = document.getElementById('_stog');
-  if (btn) btn.textContent = curItem.sold ? '↩ 판매중으로 변경' : '✅ 판매완료로 변경';
+  if (btn) btn.textContent = curItem.sold ? '판매중 변경' : '판매완료';
   toast(curItem.sold ? '판매완료로 변경했어요' : '판매중으로 변경했어요');
 }
 
@@ -984,7 +1052,7 @@ async function doDeleteItem() {
   } catch (e) {
     console.error(e);
     toast('삭제에 실패했어요. 다시 시도해 주세요.');
-    if (btn) { btn.textContent = '🗑 상품 삭제'; btn.disabled = false; }
+    if (btn) { btn.textContent = '삭제'; btn.disabled = false; }
   }
 }
 
