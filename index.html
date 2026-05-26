@@ -32,6 +32,9 @@
     .screen.right { transform: translateX(100%); }
     .screen.left  { transform: translateX(-100%); pointer-events: none; }
     .screen.active { transform: translateX(0); z-index: 10; }
+    .ptr { position: absolute; top: 0; left: 50%; transform: translate(-50%, -120%); z-index: 50; background: var(--surface); color: var(--pink-dark); border: .5px solid var(--pink-br); box-shadow: 0 6px 18px rgba(30,30,50,.08); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; transition: transform .18s ease; pointer-events: none; }
+    .ptr.show { transform: translate(-50%, 12px); }
+    .ptr .spin { width: 14px; height: 14px; }
 
     /* ─── 헤더 ─── */
     .hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
@@ -231,6 +234,7 @@
 <input type="file" id="f-item" accept="image/*" multiple style="display:none">
 
 <div id="app">
+  <div id="ptr" class="ptr"><div class="spin"></div><span>새로고침</span></div>
   <div id="s-nick" class="screen active"></div>
   <div id="s-main" class="screen right"></div>
   <div id="s-det"  class="screen right"></div>
@@ -450,6 +454,67 @@ function goBack() {
   if (prev === 's-my') renderMy();
 }
 
+function activeScreenEl() {
+  return document.querySelector('.screen.active');
+}
+
+let ptrStartY = 0;
+let ptrPulling = false;
+let ptrRefreshing = false;
+
+function setPullRefresh(show, text = '새로고침') {
+  const el = document.getElementById('ptr');
+  if (!el) return;
+  el.querySelector('span').textContent = text;
+  el.classList.toggle('show', show);
+}
+
+async function refreshActiveScreen() {
+  if (ptrRefreshing) return;
+  ptrRefreshing = true;
+  setPullRefresh(true, '새로고침 중...');
+  try {
+    if (screenHistory[screenHistory.length - 1] === 's-main') {
+      cachedItems = [];
+      await renderMain(document.getElementById('_sq')?.value || '');
+    } else if (screenHistory[screenHistory.length - 1] === 's-my') {
+      await renderMy();
+    } else if (screenHistory[screenHistory.length - 1] === 's-det' && curId) {
+      commentCache.delete(curId);
+      const id = curId;
+      await hydrateItemPhotos(id);
+      await loadComments(id, true);
+      if (curId === id) await openDet(id);
+    }
+  } finally {
+    ptrRefreshing = false;
+    setPullRefresh(false);
+  }
+}
+
+document.getElementById('app').addEventListener('touchstart', e => {
+  const active = activeScreenEl();
+  if (!active || active.scrollTop > 0 || ptrRefreshing) return;
+  ptrStartY = e.touches[0].clientY;
+  ptrPulling = true;
+}, { passive: true });
+
+document.getElementById('app').addEventListener('touchmove', e => {
+  if (!ptrPulling || ptrRefreshing) return;
+  const active = activeScreenEl();
+  if (!active || active.scrollTop > 0) { ptrPulling = false; return; }
+  const dy = e.touches[0].clientY - ptrStartY;
+  if (dy > 48) setPullRefresh(true, '놓으면 새로고침');
+}, { passive: true });
+
+document.getElementById('app').addEventListener('touchend', e => {
+  if (!ptrPulling || ptrRefreshing) return;
+  ptrPulling = false;
+  const dy = (e.changedTouches[0]?.clientY || 0) - ptrStartY;
+  if (dy > 70) refreshActiveScreen();
+  else setPullRefresh(false);
+}, { passive: true });
+
 /* ── 파일 업로드 → Base64 ── */
 function readFile(file) {
   return new Promise(res => {
@@ -543,8 +608,8 @@ document.getElementById('f-edit').addEventListener('change', async e => {
 document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
-  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 720, .72)));
-  itemThumbs = await Promise.all(files.map(f => readItemImage(f, 360, .68)));
+  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 1400, .88)));
+  itemThumbs = await Promise.all(files.map(f => readItemImage(f, 520, .76)));
   renderItemPhotoZone();
 });
 
