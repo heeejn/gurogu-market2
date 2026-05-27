@@ -81,7 +81,8 @@
     .card:active { opacity: .88; }
     .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
     .card-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
-    .photo-loading { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text3); background: linear-gradient(135deg, #F8F9FB, #EEF1F5); font-size: 26px; }
+    .photo-loading { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: transparent; background: linear-gradient(110deg, #F3F5F8 8%, #FAFBFC 18%, #EEF1F5 33%); background-size: 200% 100%; animation: photoShimmer 1.2s linear infinite; font-size: 0; }
+    @keyframes photoShimmer { to { background-position-x: -200%; } }
     .card-body { padding: 8px 9px 10px; border-top: .5px solid var(--br); }
     .card-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-price { font-size: 13px; font-weight: 800; color: var(--pink-dark); }
@@ -422,7 +423,7 @@ function forgetCachedComments(id) {
 }
 function itemMedia(v, category) {
   const thumbs = itemThumbList(v);
-  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
+  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading" aria-label="사진 불러오는 중"></div>';
 }
 function jsStr(v) {
   return JSON.stringify(String(v || ''));
@@ -450,10 +451,17 @@ function saveProfile() {
   else localStorage.removeItem('gurogu_profile_photo');
 }
 function relTime(ts) {
-  const d = Math.floor((Date.now() - new Date(ts)) / 1000);
+  const date = new Date(ts);
+  const d = Math.floor((Date.now() - date) / 1000);
   if (d < 60) return '방금';
   if (d < 3600) return Math.floor(d / 60) + '분 전';
   if (d < 86400) return Math.floor(d / 3600) + '시간 전';
+  if (d >= 86400 * 7) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${y}.${m}.${day}`;
+  }
   return Math.floor(d / 86400) + '일 전';
 }
 let toastT;
@@ -647,16 +655,25 @@ async function pollNotifications(silent = true) {
     return;
   }
 
-  const [likesRes, commentsRes] = await Promise.all([
+  const [likesRes, commentsRes, allCommentsRes] = await Promise.all([
     sb.from('likes').select('item_id').in('item_id', ids),
     sb.from('comments').select('id,item_id,author_name,content,created_at').in('item_id', ids),
+    restRows('comments?select=id,item_id,parent_id,author_name,content,created_at&limit=5000'),
   ]);
   if (likesRes.error) console.warn('알림 좋아요 조회 실패', likesRes.error);
   if (commentsRes.error) console.warn('알림 댓글 조회 실패', commentsRes.error);
+  if (allCommentsRes.error) console.warn('답글 알림 조회 실패', allCommentsRes.error);
 
-  const titleById = new Map(owned.map(i => [i.id, i.title || '내 상품']));
+  const titleById = new Map([
+    ...cachedItems.map(i => [i.id, i.title || '상품']),
+    ...owned.map(i => [i.id, i.title || '내 상품']),
+  ]);
   const likes = new Map();
   (likesRes.data || []).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
+  const allComments = allCommentsRes.data || [];
+  const myCommentIds = new Set(allComments.filter(c => c.author_name === myN).map(c => c.id));
+  const replyComments = allComments.filter(c => c.parent_id && myCommentIds.has(c.parent_id) && c.author_name !== myN);
+  const replyIdSet = new Set(replyComments.map(c => c.id));
   const commentsByItem = new Map();
   (commentsRes.data || []).forEach(c => {
     if (!commentsByItem.has(c.item_id)) commentsByItem.set(c.item_id, []);
@@ -666,6 +683,7 @@ async function pollNotifications(silent = true) {
   const prevSeen = loadSeenEngagement();
   const firstRun = !prevSeen;
   const newNotis = [];
+  nextSeen._replies = replyComments.map(c => c.id);
   ids.forEach(id => {
     const itemComments = commentsByItem.get(id) || [];
     const visibleComments = itemComments.filter(c => c.author_name !== myN);
@@ -688,7 +706,7 @@ async function pollNotifications(silent = true) {
 
     const oldCommentIds = new Set(prev.comments || []);
     visibleComments
-      .filter(c => !oldCommentIds.has(c.id))
+      .filter(c => !oldCommentIds.has(c.id) && !replyIdSet.has(c.id))
       .forEach(c => newNotis.push({
         key: `comment-${c.id}`,
         item_id: id,
@@ -696,6 +714,18 @@ async function pollNotifications(silent = true) {
         message: `${c.author_name || '누군가'} 님이 댓글을 남겼어요: ${String(c.content || '').slice(0, 40)}`,
       }));
   });
+
+  if (!firstRun) {
+    const oldReplyIds = new Set(prevSeen._replies || []);
+    replyComments
+      .filter(c => !oldReplyIds.has(c.id))
+      .forEach(c => newNotis.push({
+        key: `reply-${c.id}`,
+        item_id: c.item_id,
+        title: titleById.get(c.item_id) || '댓글 단 상품',
+        message: `${c.author_name || '누군가'} 님이 내 댓글에 답글을 남겼어요: ${String(c.content || '').slice(0, 40)}`,
+      }));
+  }
 
   saveSeenEngagement(nextSeen);
   if (newNotis.length && !silent) addNotifications(newNotis);
