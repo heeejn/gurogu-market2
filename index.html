@@ -9,18 +9,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* ─── 라이트박스 ─── */
-    .lightbox { position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity .2s; }
-    .lightbox.open { opacity: 1; pointer-events: all; }
-    .lb-close { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; background: rgba(255,255,255,.18); border: none; border-radius: 50%; color: #fff; font-size: 24px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; line-height: 1; -webkit-tap-highlight-color: transparent; font-family: inherit; }
-    .lb-gallery { flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior: contain; }
-    .lb-gallery::-webkit-scrollbar { display: none; }
-    .lb-item { flex: 0 0 100%; display: flex; align-items: center; justify-content: center; scroll-snap-align: start; overflow: hidden; }
-    .lb-item img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; transform-origin: center; will-change: transform; }
-    .lb-dots { display: flex; justify-content: center; gap: 6px; padding: 14px 0; flex-shrink: 0; }
-    .lb-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.35); transition: background .15s; }
-    .lb-dot.on { background: #fff; }
-
     /* ─── 리셋 & 기본 ─── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -40,13 +28,13 @@
     #app { width: 100%; max-width: 430px; height: 100dvh; margin: 0 auto; position: relative; overflow: hidden; background: var(--bg); }
 
     /* ─── 화면 전환 ─── */
-    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: none; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; z-index: 1; }
+    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; z-index: 1; }
     .screen.right { transform: translateX(100%); }
     .screen.left  { transform: translateX(-100%); pointer-events: none; }
     .screen.active { transform: translateX(0); z-index: 10; }
     .ptr { position: absolute; top: 0; left: 50%; transform: translate(-50%, -120%); z-index: 50; background: var(--surface); color: var(--pink-dark); border: .5px solid var(--pink-br); box-shadow: 0 6px 18px rgba(30,30,50,.08); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; transition: transform .18s ease; pointer-events: none; }
     .ptr.show { transform: translate(-50%, 12px); }
-    .ptr .spin { width: 14px; height: 14px; border: 2px solid var(--pink-br); border-top-color: var(--pink-dark); border-radius: 50%; animation: spin .7s linear infinite; }
+    .ptr .spin { width: 14px; height: 14px; }
 
     /* ─── 헤더 ─── */
     .hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
@@ -55,7 +43,7 @@
     .logo-img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.38); display: block; }
     .logo-name { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.3px; }
     .hdr-r { display: flex; gap: 6px; align-items: center; }
-    .hbtn { display: flex; align-items: center; gap: 3px; border: .5px solid var(--br2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text2); font-family: inherit; -webkit-tap-highlight-color: transparent; transition: background .1s; }
+    .hbtn { display: flex; align-items: center; gap: 3px; border: .5px solid var(--br2); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--text2); font-family: inherit; -webkit-tap-highlight-color: transparent; transition: background .1s; position: relative; }
     .hbtn:active { background: var(--bg); }
     .hbtn-pink { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
     .pill { display: flex; align-items: center; gap: 5px; background: var(--pur-bg); color: var(--pur-dark); border: .5px solid var(--pur-br); border-radius: 999px; padding: 4px 11px 4px 4px; font-size: 11px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -70,7 +58,7 @@
 
     /* ─── 히어로 ─── */
     .hero { background: var(--surface); padding: 14px 14px 13px; border-bottom: .5px solid var(--br); }
-    .hero p { font-size: 15px; color: var(--text); line-height: 1.65; margin-bottom: 0; }
+    .hero p { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 12px; }
     .search-row { display: flex; gap: 7px; }
     .search-row input { flex: 1; height: 38px; border: .5px solid var(--br2); border-radius: 10px; padding: 0 12px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; }
     .search-row input:focus { outline: none; border-color: var(--pink); }
@@ -79,7 +67,7 @@
     /* ─── 필터 / 탭 ─── */
     .filter-bar { display: flex; gap: 6px; padding: 10px 14px; background: var(--surface); border-bottom: .5px solid var(--br); overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .filter-bar::-webkit-scrollbar { display: none; }
-    .chip { padding: 8px 16px; border-radius: 999px; border: .5px solid var(--br); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; line-height: 1; }
+    .chip { padding: 5px 13px; border-radius: 999px; border: .5px solid var(--br); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; }
     .chip.on { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
     .stat-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); }
     .stab { flex: 1; text-align: center; padding: 9px 0; font-size: 13px; font-weight: 700; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; -webkit-tap-highlight-color: transparent; }
@@ -103,8 +91,8 @@
     .mini-av { width: 13px; height: 13px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: 800; color: var(--pur); }
     .mini-av img { width: 100%; height: 100%; object-fit: cover; }
     .heart-btn { position: absolute; top: 6px; right: 6px; background: var(--surface); border: .5px solid var(--br); border-radius: 999px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; -webkit-tap-highlight-color: transparent; }
-    .sold-badge { position: absolute; top: 6px; left: 6px; background: rgba(10,10,30,.78); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; letter-spacing: -.2px; }
-    .mine-badge { position: absolute; top: 6px; left: 6px; background: var(--pink); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; letter-spacing: -.2px; box-shadow: 0 1px 4px rgba(212,83,126,.35); }
+    .sold-badge { position: absolute; top: 6px; left: 6px; background: rgba(20,20,40,.55); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
+    .mine-badge { position: absolute; top: 6px; left: 6px; background: var(--pink); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
     .empty { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; grid-column: span 2; }
 
     /* ─── 상품 상세 ─── */
@@ -117,7 +105,7 @@
     .det-title { font-size: 15px; font-weight: 800; margin-bottom: 5px; }
     .det-stats { display: flex; gap: 12px; margin-bottom: 8px; }
     .det-stat { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text3); font-weight: 700; }
-    .det-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; }
+    .det-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; word-break: break-word; }
     .det-seller { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; padding: 10px 12px; background: var(--bg); border-radius: 10px; border: .5px solid var(--br); }
     .det-sav { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--pur-dark); flex-shrink: 0; }
     .det-sav img { width: 100%; height: 100%; object-fit: cover; }
@@ -145,6 +133,7 @@
     .cmt-av { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: var(--pur); }
     .cmt-av img { width: 100%; height: 100%; object-fit: cover; }
     .cmt-nick { font-size: 12px; font-weight: 800; color: var(--pink-dark); }
+    .seller-tag { font-size: 9px; font-weight: 800; color: var(--pink-dark); background: var(--pink-bg); border: .5px solid var(--pink-br); border-radius: 999px; padding: 2px 6px; }
     .cmt-time { font-size: 10px; color: var(--text3); margin-left: auto; }
     .cmt-text { font-size: 13px; line-height: 1.5; margin-bottom: 6px; }
     .cmt-acts { display: flex; gap: 8px; }
@@ -198,19 +187,29 @@
     .sp-off { background: var(--bg); color: var(--text3); border: .5px solid var(--br); }
     .empty-my { text-align: center; padding: 40px 14px; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; }
 
+    /* ─── 알림 ─── */
+    .noti-badge { position: absolute; top: -4px; right: -3px; min-width: 16px; height: 16px; border-radius: 999px; background: var(--pink); color: #fff; font-size: 9px; font-weight: 800; display: none; align-items: center; justify-content: center; padding: 0 4px; border: 1px solid #fff; }
+    .noti-badge.on { display: flex; }
+    .noti-list { padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 8px; }
+    .noti-item { background: var(--surface); border: .5px solid var(--br); border-radius: 12px; padding: 11px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .noti-item.unread { border-color: var(--pink-br); background: #FFF8FA; }
+    .noti-title { font-size: 12px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+    .noti-msg { font-size: 12px; color: var(--text2); line-height: 1.45; }
+    .noti-time { font-size: 10px; color: var(--text3); margin-top: 6px; font-weight: 700; }
+
     /* ─── 판매 등록 ─── */
     .sell-body { padding: 14px; }
     .fr { margin-bottom: 10px; }
     .fr label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
     .fr input, .fr select, .fr textarea { width: 100%; border: .5px solid var(--br2); border-radius: 10px; padding: 9px 11px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; resize: none; }
-    .fr textarea { height: 80px; }
+    .fr textarea { min-height: 110px; resize: vertical; }
     .fr input:focus, .fr select:focus, .fr textarea:focus { outline: none; border-color: var(--pink); background: var(--surface); }
     .img-zone { width: 100%; min-height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
     .img-zone.has-img { align-items: stretch; justify-content: flex-start; border-style: solid; padding: 8px; background: var(--surface); overflow-x: auto; }
     .img-zone.has-img::-webkit-scrollbar { display: none; }
     .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; position: relative; }
     .photo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .photo-del-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; background: rgba(0,0,0,.55); color: #fff; border: none; border-radius: 50%; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    .photo-del-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; background: rgba(0,0,0,.55); color: #fff; border: none; border-radius: 50%; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; font-family: inherit; -webkit-tap-highlight-color: transparent; z-index: 2; }
     .photo-add-btn { width: 112px; aspect-ratio: 1; border: 1px dashed var(--br2); border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--text3); cursor: pointer; background: var(--bg); -webkit-tap-highlight-color: transparent; }
     .made-by { text-align: center; font-size: 11px; color: var(--text3); padding: 18px 0 10px; font-weight: 700; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
@@ -255,13 +254,9 @@
   <div id="s-det"  class="screen right"></div>
   <div id="s-my"   class="screen right"></div>
   <div id="s-sell" class="screen right"></div>
+  <div id="s-noti" class="screen right"></div>
 </div>
 
-<div id="lightbox" class="lightbox">
-  <button class="lb-close" onclick="closeLightbox()">×</button>
-  <div class="lb-gallery" id="lb-gallery"></div>
-  <div class="lb-dots" id="lb-dots"></div>
-</div>
 <div class="toast-wrap"><div id="toast" class="toast"></div></div>
 
 <script>
@@ -275,7 +270,6 @@ const SUPABASE_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const DELETED_MARK = '__GUROGU_MARKET_DELETED__';
-const DELETED_CMT_MARK = '__CMT_DELETED__';
 
 /* ── 상태 ── */
 const emM = { 의류:'👗', 전자기기:'📱', 도서:'📚', 생활용품:'🏠', 취미:'🎮', 식물:'🌿', 기타:'📦' };
@@ -284,11 +278,13 @@ let myN = localStorage.getItem('gurogu_nickname') || '';
 let myP = localStorage.getItem('gurogu_profile_photo') || '';
 let itemPhotos = [];
 let itemThumbs = [];
-let catF = '전체', statF = '판매중';
+let catF = '전체', statF = '전체';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
 const PHOTO_CACHE_PREFIX = 'gurogu_item_thumb_';
 const COMMENT_CACHE_PREFIX = 'gurogu_item_comments_';
+const NOTI_KEY_PREFIX = 'gurogu_notifications_';
+const NOTI_SEEN_PREFIX = 'gurogu_engagement_seen_';
 const hydratingPhotoIds = new Set();
 const hydratedPhotoIds = new Set();
 const photoHydrationPromises = new Map();
@@ -352,10 +348,10 @@ function getCachedThumb(id) {
 function getCachedThumbs(id) {
   const raw = getCachedThumb(id);
   if (!raw) return [];
-  if (isImg(raw)) return [raw];
+  if (isPhotoRef(raw)) return [raw];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
+    return Array.isArray(parsed) ? parsed.filter(isPhotoRef) : [];
   } catch (e) {
     return [];
   }
@@ -385,8 +381,11 @@ function rememberItemThumbs(id, thumbs) {
 }
 function itemRecordPayload(item) {
   const photos = Array.isArray(item?.photo_urls) ? item.photo_urls.filter(isPhotoRef) : [];
-  const thumbs = item?.thumbnail_url ? [item.thumbnail_url] : [];
-  return photos.length || thumbs.length ? itemPayload(photos, item.category, thumbs) : '';
+  const thumb = item?.thumbnail_url && isImgUrl(item.thumbnail_url) ? item.thumbnail_url : '';
+  if (!photos.length && !thumb) return '';
+  const effectivePhotos = photos.length ? photos : [thumb];
+  const effectiveThumbs = thumb ? [thumb] : photos;
+  return JSON.stringify({ photos: effectivePhotos, thumbs: effectiveThumbs });
 }
 function getCachedComments(id) {
   try {
@@ -412,26 +411,29 @@ function forgetCachedComments(id) {
 }
 function itemMedia(v, category) {
   const thumbs = itemThumbList(v);
-  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
+  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진" loading="lazy" decoding="async">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
 }
 function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
     lbPhotos = thumbs;
-    return thumbs.map((p, i) => `<div class="det-img det-img-pending" onclick="openLightbox(lbPhotos,${i})"><img src="${p}" alt="상품 사진"></div>`).join('');
+    return thumbs.map((p, i) => `<div class="det-img det-img-pending" onclick="openLightbox(lbPhotos,${i})"><img src="${p}" alt="상품 사진" loading="eager" decoding="async"></div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${fallback}</div>`;
   }
   lbPhotos = photos;
-  return photos.map((p, i) => `<div class="det-img" onclick="openLightbox(lbPhotos,${i})" style="cursor:zoom-in"><img src="${p}" alt="상품 사진 ${i + 1}"></div>`).join('');
+  return photos.map((p, i) => `<div class="det-img" onclick="openLightbox(lbPhotos,${i})" style="cursor:zoom-in"><img src="${p}" alt="상품 사진 ${i+1}" loading="eager" decoding="async"></div>`).join('');
 }
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, m => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[m]));
+}
+function formatDesc(v) {
+  return esc(String(v ?? '')).replace(/\r\n|\r|\n/g, '<br>');
 }
 function saveProfile() {
   if (myN) localStorage.setItem('gurogu_nickname', myN);
@@ -453,7 +455,7 @@ function toast(msg) {
 }
 
 /* ── 화면 전환 ── */
-const allScreens = ['s-nick', 's-main', 's-det', 's-my', 's-sell'];
+const allScreens = ['s-nick', 's-main', 's-det', 's-my', 's-sell', 's-noti'];
 function goTo(id) {
   const cur = screenHistory[screenHistory.length - 1];
   if (cur === id) return;
@@ -497,7 +499,7 @@ function canStartPullRefresh(e) {
   if (ptrRefreshing || e.touches.length !== 1) return false;
   const active = activeScreenEl();
   if (!active || active.scrollTop > 0) return false;
-  if (e.target.closest('.det-gallery, .det-img, input, textarea, select, .img-zone')) return false;
+  if (e.target.closest('.det-gallery, .det-img, img, input, textarea, select, button, .back-btn, .hbtn, .wish-btn, .img-zone, .photo-preview')) return false;
   return screenHistory[screenHistory.length - 1] === 's-main' || screenHistory[screenHistory.length - 1] === 's-my';
 }
 
@@ -507,7 +509,6 @@ async function refreshActiveScreen() {
   setPullRefresh(true, '새로고침 중...');
   try {
     if (screenHistory[screenHistory.length - 1] === 's-main') {
-      cachedItems = [];
       await renderMain(document.getElementById('_sq')?.value || '');
     } else if (screenHistory[screenHistory.length - 1] === 's-my') {
       await renderMy();
@@ -524,6 +525,129 @@ async function refreshActiveScreen() {
   }
 }
 
+/* ── 알림 ── */
+function notificationKey() {
+  return NOTI_KEY_PREFIX + (myN || userKey);
+}
+function seenKey() {
+  return NOTI_SEEN_PREFIX + (myN || userKey);
+}
+function loadNotifications() {
+  try { return JSON.parse(localStorage.getItem(notificationKey()) || '[]'); }
+  catch (e) { return []; }
+}
+function saveNotifications(list) {
+  try { localStorage.setItem(notificationKey(), JSON.stringify(list.slice(0, 60))); }
+  catch (e) { console.warn('알림 저장 실패', e); }
+}
+function loadSeenEngagement() {
+  try { return JSON.parse(localStorage.getItem(seenKey()) || 'null'); }
+  catch (e) { return null; }
+}
+function saveSeenEngagement(seen) {
+  try { localStorage.setItem(seenKey(), JSON.stringify(seen)); }
+  catch (e) { console.warn('알림 기준 저장 실패', e); }
+}
+function unreadNotificationCount() {
+  return loadNotifications().filter(n => !n.read).length;
+}
+function updateNotificationBadge() {
+  const badge = document.getElementById('_noti-badge');
+  if (!badge) return;
+  const n = unreadNotificationCount();
+  badge.textContent = n > 9 ? '9+' : n;
+  badge.classList.toggle('on', n > 0);
+}
+function addNotifications(items) {
+  if (!items.length) return;
+  const old = loadNotifications();
+  const known = new Set(old.map(n => n.key));
+  const fresh = items.filter(n => !known.has(n.key)).map(n => ({
+    ...n,
+    id: crypto.randomUUID(),
+    read: false,
+    created_at: new Date().toISOString(),
+  }));
+  if (!fresh.length) return;
+  saveNotifications([...fresh, ...old]);
+  updateNotificationBadge();
+  toast(fresh.length === 1 ? '새 알림이 있어요' : `새 알림 ${fresh.length}개가 있어요`);
+}
+async function pollNotifications(silent = true) {
+  if (!myN) return;
+  const { data: myItems, error: itemError } = await sb
+    .from('items')
+    .select('id,title,description')
+    .eq('seller_name', myN)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (itemError) { console.warn('알림 상품 조회 실패', itemError); return; }
+
+  const owned = (myItems || []).filter(i => i.description !== DELETED_MARK);
+  const ids = owned.map(i => i.id);
+  const nextSeen = {};
+  if (!ids.length) {
+    saveSeenEngagement(nextSeen);
+    updateNotificationBadge();
+    return;
+  }
+
+  const [likesRes, commentsRes] = await Promise.all([
+    sb.from('likes').select('item_id').in('item_id', ids),
+    sb.from('comments').select('id,item_id,author_name,content,created_at').in('item_id', ids),
+  ]);
+  if (likesRes.error) console.warn('알림 좋아요 조회 실패', likesRes.error);
+  if (commentsRes.error) console.warn('알림 댓글 조회 실패', commentsRes.error);
+
+  const titleById = new Map(owned.map(i => [i.id, i.title || '내 상품']));
+  const likes = new Map();
+  (likesRes.data || []).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
+  const commentsByItem = new Map();
+  (commentsRes.data || []).forEach(c => {
+    if (!commentsByItem.has(c.item_id)) commentsByItem.set(c.item_id, []);
+    commentsByItem.get(c.item_id).push(c);
+  });
+
+  const prevSeen = loadSeenEngagement();
+  const firstRun = !prevSeen;
+  const newNotis = [];
+  ids.forEach(id => {
+    const itemComments = commentsByItem.get(id) || [];
+    const visibleComments = itemComments.filter(c => c.author_name !== myN);
+    nextSeen[id] = {
+      likes: likes.get(id) || 0,
+      comments: visibleComments.map(c => c.id),
+    };
+    if (firstRun) return;
+
+    const prev = prevSeen[id] || { likes: 0, comments: [] };
+    const likeDelta = Math.max(0, nextSeen[id].likes - (prev.likes || 0));
+    if (likeDelta) {
+      newNotis.push({
+        key: `like-${id}-${nextSeen[id].likes}`,
+        item_id: id,
+        title: titleById.get(id),
+        message: `내 상품에 좋아요가 ${likeDelta}개 늘었어요.`,
+      });
+    }
+
+    const oldCommentIds = new Set(prev.comments || []);
+    visibleComments
+      .filter(c => !oldCommentIds.has(c.id))
+      .forEach(c => newNotis.push({
+        key: `comment-${c.id}`,
+        item_id: id,
+        title: titleById.get(id),
+        message: `${c.author_name || '누군가'} 님이 댓글을 남겼어요: ${String(c.content || '').slice(0, 40)}`,
+      }));
+  });
+
+  saveSeenEngagement(nextSeen);
+  if (newNotis.length && !silent) addNotifications(newNotis);
+  else if (newNotis.length) addNotifications(newNotis);
+  else updateNotificationBadge();
+}
+
 document.getElementById('app').addEventListener('touchstart', e => {
   if (!canStartPullRefresh(e)) return;
   ptrStartX = e.touches[0].clientX;
@@ -538,9 +662,8 @@ document.getElementById('app').addEventListener('touchmove', e => {
   const dx = Math.abs(e.touches[0].clientX - ptrStartX);
   const dy = e.touches[0].clientY - ptrStartY;
   if (dx > 28 || dy < 0) { ptrPulling = false; setPullRefresh(false); return; }
-  if (dy > 40) e.preventDefault();
   if (dy > 64) setPullRefresh(true, '놓으면 새로고침');
-}, { passive: false });
+}, { passive: true });
 
 document.getElementById('app').addEventListener('touchend', e => {
   if (!ptrPulling || ptrRefreshing) return;
@@ -560,41 +683,23 @@ function readFile(file) {
   });
 }
 function readItemImage(file, max = 900, quality = .78) {
-  return new Promise(res => {
-    const r = new FileReader();
-    r.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        res(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => res(e.target.result);
-      img.src = e.target.result;
-    };
-    r.readAsDataURL(file);
-  });
+  return readItemImageBoth(file, max, quality).then(r => r.photo);
 }
-function readItemImageBoth(file) {
+function readItemImageBoth(file, maxPhoto = 1400, maxThumb = 520) {
   return new Promise(res => {
     const r = new FileReader();
     r.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const resize = (max, quality) => {
+        const resize = (max, q) => {
           const scale = Math.min(1, max / Math.max(img.width, img.height));
-          const w = Math.round(img.width * scale);
-          const h = Math.round(img.height * scale);
           const c = document.createElement('canvas');
-          c.width = w; c.height = h;
-          c.getContext('2d').drawImage(img, 0, 0, w, h);
-          return c.toDataURL('image/jpeg', quality);
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          return c.toDataURL('image/jpeg', q);
         };
-        res({ photo: resize(1400, .88), thumb: resize(520, .76) });
+        res({ photo: resize(maxPhoto, .88), thumb: resize(maxThumb, .76) });
       };
       img.onerror = () => res({ photo: e.target.result, thumb: e.target.result });
       img.src = e.target.result;
@@ -619,7 +724,7 @@ function makeThumbFromDataUrl(src, max = 360, quality = .68) {
   });
 }
 async function dataUrlToBlob(dataUrl) {
-  return (await fetch(dataUrl)).blob();
+  return fetch(dataUrl).then(r => r.blob());
 }
 async function uploadImageDataUrl(dataUrl, folder = 'items') {
   if (isImgUrl(dataUrl)) return dataUrl;
@@ -633,11 +738,13 @@ async function uploadImageDataUrl(dataUrl, folder = 'items') {
   return data.publicUrl;
 }
 async function uploadItemImages(photos, thumbs) {
-  const [photoUrls, thumbUrl] = await Promise.all([
-    Promise.all(photos.map(p => isImgUrl(p) ? p : uploadImageDataUrl(p, 'items'))),
-    thumbs[0] ? (isImgUrl(thumbs[0]) ? Promise.resolve(thumbs[0]) : uploadImageDataUrl(thumbs[0], 'thumbs')) : Promise.resolve(''),
+  const [photoUrls, thumbnailUrl] = await Promise.all([
+    Promise.all(photos.map(p => isImgUrl(p) ? Promise.resolve(p) : uploadImageDataUrl(p, 'items'))),
+    thumbs[0]
+      ? (isImgUrl(thumbs[0]) ? Promise.resolve(thumbs[0]) : uploadImageDataUrl(thumbs[0], 'thumbs'))
+      : Promise.resolve(''),
   ]);
-  return { photoUrls, thumbnailUrl: thumbUrl || photoUrls[0] || '' };
+  return { photoUrls, thumbnailUrl: thumbnailUrl || photoUrls[0] || '' };
 }
 document.getElementById('f-init').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
@@ -669,25 +776,25 @@ async function fetchItems() {
     .from('items')
     .select('id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls')
     .order('created_at', { ascending: false })
-    .limit(60);
+    .limit(500);
   if (error?.code === '42703') {
     console.warn('photo_urls/thumbnail_url 컬럼이 아직 없어 기존 방식으로 불러옵니다.', error);
     const fallback = await sb
       .from('items')
       .select('id,title,price,category,description,seller_name,seller_photo,sold,created_at')
       .order('created_at', { ascending: false })
-      .limit(60);
+      .limit(500);
     data = fallback.data;
     error = fallback.error;
   }
-  if (error) { console.error(JSON.stringify(error)); return []; }
-	  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
-	    ...i,
-	    emoji: itemRecordPayload(i) || cachedThumbPayload(i.id),
-	    seller_photo: i.seller_photo || '',
+  if (error) { console.error(JSON.stringify(error)); return null; }
+  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
+    ...i,
+    emoji: itemRecordPayload(i) || cachedThumbPayload(i.id),
+    seller_photo: i.seller_photo || '',
     likeCount: i.likeCount || 0,
     commentCount: i.commentCount || 0,
-	  }));
+  }));
 	}
 
 function mergeFetchedItems(freshItems) {
@@ -807,7 +914,7 @@ async function hydrateItemPhotos(id, q) {
 async function fetchComments(itemId) {
   const { data, error } = await sb
     .from('comments')
-    .select('id,item_id,parent_id,author_name,content,created_at')
+    .select('id,item_id,parent_id,author_name,author_photo,content,created_at')
     .eq('item_id', itemId)
     .order('created_at', { ascending: true });
   if (error) { console.error(error); return []; }
@@ -950,10 +1057,6 @@ async function deleteComment(id) {
   await sb.from('comments').delete().eq('id', id);
 }
 
-async function softDeleteComment(id) {
-  await sb.from('comments').update({ content: DELETED_CMT_MARK }).eq('id', id);
-}
-
 /* ════════════════════════════════
    닉네임 설정 화면
 ════════════════════════════════ */
@@ -984,6 +1087,7 @@ async function startApp() {
   myN = v;
   saveProfile();
   await renderMain();
+  startNotificationPolling();
   goTo('s-main');
 }
 
@@ -1011,6 +1115,7 @@ async function renderMain(q) {
         <div class="pill-av">${av(myP, myN, 22)}</div>
         <span>${myN}</span>
       </div>
+      <button class="hbtn" onclick="renderNotifications();goTo('s-noti')" aria-label="알림"><i class="ti ti-bell" aria-hidden="true"></i><span class="noti-badge" id="_noti-badge"></span></button>
       <div class="hbtn hbtn-pink" onclick="renderSell();goTo('s-sell')">+ 팔기</div>
     </div>
   </div>
@@ -1031,18 +1136,15 @@ async function renderMain(q) {
   </div>
   <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div><div class="made-by">Made by 윤듬듬🐢</div></div>`;
 
-  const _bar = document.querySelector('.filter-bar');
-  const _activeChip = _bar?.querySelector('.chip.on');
-  if (_bar && _activeChip) {
-    _bar.scrollLeft = _activeChip.offsetLeft - (_bar.offsetWidth - _activeChip.offsetWidth) / 2;
-  }
-
   if (cachedItems.length) renderMainList(q);
 
+  updateNotificationBadge();
   const items = await fetchItems();
-  cachedItems = mergeFetchedItems(items);
+  if (items) cachedItems = mergeFetchedItems(items);
+  else toast('상품을 불러오지 못해서 기존 목록을 유지했어요');
   renderMainList(q);
   hydrateMainMeta(q);
+  pollNotifications();
 }
 
 function renderMainList(q) {
@@ -1069,7 +1171,7 @@ function filterMainItems(q) {
   return cachedItems.filter(i => {
     const mc = catF === '전체' || i.category === catF;
     const ms = statF === '전체' || (statF === '판매중' && !i.sold) || (statF === '판매완료' && i.sold);
-    const mq = !q || i.title.includes(q);
+    const mq = !q || String(i.title || '').includes(q);
     return mc && ms && mq;
   });
 }
@@ -1082,10 +1184,10 @@ function cardH(i, liked) {
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
     <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
     <div class="card-body">
-      <div class="card-name">${i.title}</div>
+      <div class="card-name">${esc(i.title)}</div>
       <div class="card-price">${i.price.toLocaleString()}원</div>
       <div class="card-sub">
-        <div class="card-sub-l"><div class="mini-av">${av(p, i.seller_name, 13)}</div><span>${i.seller_name}</span></div>
+      <div class="card-sub-l"><div class="mini-av">${av(p, i.seller_name, 13)}</div><span>${esc(i.seller_name)}</span></div>
         <div class="card-sub-r">
           <div class="card-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:10px;"></i>${i.likeCount}</div>
           <div class="card-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:10px;"></i>${i.commentCount || 0}</div>
@@ -1157,13 +1259,7 @@ async function openDet(id) {
       commentCount: curItem?.commentCount || 0,
     };
     cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...curItem } : i);
-    const _gl = document.querySelector('.det-gallery');
-    const _glScroll = _gl?.scrollLeft || 0;
     renderDet();
-    if (_glScroll > 0) requestAnimationFrame(() => {
-      const g = document.querySelector('.det-gallery');
-      if (g) g.scrollLeft = _glScroll;
-    });
     fetchLikeCount(id).then(likeCount => {
       if (curId !== id || !curItem) return;
       curItem.likeCount = likeCount;
@@ -1186,7 +1282,7 @@ function renderDetLoading(it) {
   <div class="det-content">
     <div class="det-price">${(it.price || 0).toLocaleString()}원</div>
     <div class="det-title">${esc(it.title || '상품')}</div>
-    <div class="det-desc">${esc(it.description || '')}</div>
+    <div class="det-desc">${formatDesc(it.description)}</div>
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
@@ -1213,12 +1309,12 @@ function renderDet() {
   <div class="det-gallery">${itemGallery(it.emoji, it.category)}</div>
   <div class="det-content">
     <div class="det-price">${it.price.toLocaleString()}원</div>
-    <div class="det-title">${it.title}</div>
-    <div class="det-stats">
+    <div class="det-title">${esc(it.title)}</div>
+    <div class="det-stats" style="margin-bottom:4px;">
       <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> <span id="_det-like-cnt">${it.likeCount || 0}</span></div>
       <div class="det-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;"></i> 댓글 <span id="_cmt-cnt">${it.commentCount || 0}</span></div>
     </div>
-    <div class="det-desc">${it.description || ''}</div>
+    <div class="det-desc">${formatDesc(it.description)}</div>
     <div class="det-seller">
       <div class="det-sav">${av(p, it.seller_name, 28)}</div>
       <div class="det-sname">${it.seller_name} 님</div>
@@ -1297,16 +1393,14 @@ function renderComments(itemId, cmts) {
 }
 
 function cmtHTML(c, reps) {
-  const deleted = c.content === DELETED_CMT_MARK;
-  const isMine = !deleted && c.author_name === myN;
-  if (!deleted) commentTextMap.set(c.id, c.content || '');
+  const isMine = c.author_name === myN;
+  const isSeller = curItem && c.author_name === curItem.seller_name;
+  commentTextMap.set(c.id, c.content || '');
   return `<div class="cmt-item" id="cmt-${c.id}">
-    ${deleted ? `
-    <div class="cmt-text" style="color:var(--text3);font-style:italic;">이 메시지는 삭제되었습니다</div>
-    ` : `
     <div class="cmt-top">
       <div class="cmt-av">${av(c.author_photo, c.author_name, 22)}</div>
       <span class="cmt-nick">${esc(c.author_name)}</span>
+      ${isSeller ? '<span class="seller-tag">판매자</span>' : ''}
       <span class="cmt-time">${relTime(c.created_at)}</span>
     </div>
     <div class="cmt-text" id="ctxt-${c.id}">${esc(c.content)}</div>
@@ -1319,19 +1413,20 @@ function cmtHTML(c, reps) {
       <input class="rep-inp" id="ri-${c.id}" type="text" placeholder="답글 입력" maxlength="200">
       <button class="rep-post" onclick="doAddRep('${c.id}')">등록</button>
     </div>
-    `}
     ${reps.length ? `<div class="replies">${reps.map(r => repHTML(r)).join('')}</div>` : ''}
   </div>`;
 }
 
 function repHTML(r) {
   const isMine = r.author_name === myN;
+  const isSeller = curItem && r.author_name === curItem.seller_name;
   commentTextMap.set(r.id, r.content || '');
   return `<div class="rep-item" id="cmt-${r.id}">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
       <div style="display:flex;align-items:center;gap:5px;">
         <div class="cmt-av">${av(r.author_photo, r.author_name, 18)}</div>
         <span class="rep-nick">${esc(r.author_name)}</span>
+        ${isSeller ? '<span class="seller-tag">판매자</span>' : ''}
       </div>
       <span style="font-size:10px;color:var(--text3);">${relTime(r.created_at)}</span>
     </div>
@@ -1392,13 +1487,7 @@ async function doSaveCmt(id) {
 
 async function doDelCmt(id) {
   if (!confirm('댓글을 삭제할까요?')) return;
-  const cachedCmts = commentCache.get(curId) || [];
-  const hasReplies = cachedCmts.some(c => c.parent_id === id);
-  if (hasReplies) {
-    await softDeleteComment(id);
-  } else {
-    await deleteComment(id);
-  }
+  await deleteComment(id);
   toast('댓글을 삭제했어요');
   commentCache.delete(curId);
   forgetCachedComments(curId);
@@ -1408,6 +1497,7 @@ async function doDelCmt(id) {
 async function doToggleSold() {
   curItem.sold = !curItem.sold;
   await updateSoldStatus(curId, curItem.sold);
+  cachedItems = cachedItems.map(i => i.id === curId ? { ...i, sold: curItem.sold } : i);
   const btn = document.getElementById('_stog');
   if (btn) btn.textContent = curItem.sold ? '판매중 변경' : '판매완료';
   toast(curItem.sold ? '판매완료로 변경했어요' : '판매중으로 변경했어요');
@@ -1453,10 +1543,37 @@ async function doWishDet(itemId) {
 }
 
 /* ════════════════════════════════
+   알림 화면
+════════════════════════════════ */
+function renderNotifications() {
+  const list = loadNotifications();
+  saveNotifications(list.map(n => ({ ...n, read: true })));
+  updateNotificationBadge();
+
+  document.getElementById('s-noti').innerHTML = `
+  <div class="sub-hdr">
+    <div class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left" aria-hidden="true" style="font-size:16px;"></i></div>
+    <span class="sub-title">알림</span>
+  </div>
+  <div class="noti-list">
+    ${list.length
+      ? list.map(n => `<div class="noti-item${n.read ? '' : ' unread'}" onclick="openDet('${n.item_id}')">
+          <div class="noti-title">${esc(n.title || '내 상품')}</div>
+          <div class="noti-msg">${esc(n.message || '')}</div>
+          <div class="noti-time">${relTime(n.created_at)}</div>
+        </div>`).join('')
+      : '<div class="empty-my">아직 새 알림이 없어요</div>'}
+  </div>`;
+
+  pollNotifications();
+}
+
+/* ════════════════════════════════
    마이페이지
 ════════════════════════════════ */
 async function renderMy() {
-  const allItems = cachedItems.length ? cachedItems : await fetchItems();
+  const fetched = cachedItems.length ? cachedItems : await fetchItems();
+  const allItems = fetched || cachedItems;
   cachedItems = allItems;
   if (!likedItemIdsReady) {
     likedItemIds = await fetchLikedItemIds(allItems);
@@ -1528,7 +1645,7 @@ function itemRowH(i) {
   return `<div class="item-row" onclick="openDet('${i.id}')">
     <div class="item-row-em">${itemMedia(i.emoji, i.category)}</div>
     <div class="item-row-info">
-      <div class="item-row-name">${i.title}</div>
+      <div class="item-row-name">${esc(i.title)}</div>
       <div class="item-row-price">${i.price.toLocaleString()}원</div>
       <div class="item-row-meta">${relTime(i.created_at)} · ❤️ ${i.likeCount}</div>
     </div>
@@ -1538,7 +1655,15 @@ function itemRowH(i) {
 
 function saveNick() {
   const v = document.getElementById('_nei').value.trim(); if (!v) return;
-  myN = v; saveProfile(); renderMy(); toast('닉네임을 변경했어요');
+  myN = v; saveProfile(); startNotificationPolling(); renderMy(); toast('닉네임을 변경했어요');
+}
+
+let notificationTimer;
+function startNotificationPolling() {
+  clearInterval(notificationTimer);
+  if (!myN) return;
+  pollNotifications();
+  notificationTimer = setInterval(() => pollNotifications(), 30000);
 }
 
 /* ════════════════════════════════
@@ -1557,7 +1682,7 @@ function renderSell(item = null) {
     <span class="sub-title">${edit ? '상품 수정' : '물건 올리기'}</span>
   </div>
   <div class="sell-body">
-    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto"></div></div>
+    <div class="fr"><label>사진</label><div class="img-zone" id="_itemphoto" onclick="document.getElementById('f-item').click()"><i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요</div></div>
     <div class="fr"><label>제목 *</label><input type="text" id="_nt" placeholder="물건 이름" value="${esc(item?.title)}"></div>
     <div class="fr"><label>카테고리</label>
       <select id="_nc">${cats.map(c => `<option${item?.category === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
@@ -1587,7 +1712,6 @@ function renderItemPhotoZone() {
     z.innerHTML = `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
   }
 }
-
 function removePhoto(idx) {
   itemPhotos.splice(idx, 1);
   itemThumbs.splice(idx, 1);
@@ -1611,7 +1735,7 @@ async function doAddItem() {
 	      thumbnailUrl: uploaded.thumbnailUrl,
 	    });
 	    toast('상품이 등록됐어요 🎉');
-    statF = '판매중'; catF = '전체';
+    statF = '전체'; catF = '전체';
     goBack();
     await renderMain('');
   } catch (e) {
@@ -1656,137 +1780,10 @@ async function doUpdateItem() {
   }
 }
 
-/* ════════════════════════════════
-   라이트박스 (사진 확대)
-════════════════════════════════ */
-let lbPhotos = [];
-let lbZoom = 1, lbPanX = 0, lbPanY = 0;
-let lbTouchSX = 0, lbTouchSY = 0, lbTouchSTime = 0;
-let lbPinchDist0 = 0, lbPinchZoom0 = 1;
-let lbLastTap = 0, lbDragging = false;
-let lbActiveImg = null, lbRafId = 0;
-
-function openLightbox(photos, startIdx = 0) {
-  if (!photos || !photos.length) return;
-  lbZoom = 1; lbPanX = 0; lbPanY = 0;
-  const gal = document.getElementById('lb-gallery');
-  const dots = document.getElementById('lb-dots');
-  gal.innerHTML = photos.map((src, i) =>
-    `<div class="lb-item" data-i="${i}"><img src="${src}" draggable="false" alt="사진 ${i + 1}"></div>`
-  ).join('');
-  dots.innerHTML = photos.length > 1
-    ? photos.map((_, i) => `<div class="lb-dot${i === startIdx ? ' on' : ''}"></div>`).join('')
-    : '';
-  document.getElementById('lightbox').classList.add('open');
-  if (startIdx > 0) requestAnimationFrame(() => { gal.scrollLeft = startIdx * gal.offsetWidth; });
-  gal.onscroll = () => {
-    const i = Math.round(gal.scrollLeft / gal.offsetWidth);
-    dots.querySelectorAll('.lb-dot').forEach((d, j) => d.classList.toggle('on', i === j));
-    lbResetZoom();
-  };
-}
-
-function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
-}
-
-function lbCurImg() {
-  const gal = document.getElementById('lb-gallery');
-  const i = Math.round(gal.scrollLeft / gal.offsetWidth);
-  return gal.querySelectorAll('.lb-item img')[i] || null;
-}
-
-function lbResetZoom(animate) {
-  lbZoom = 1; lbPanX = 0; lbPanY = 0;
-  const img = lbCurImg();
-  if (!img) return;
-  if (animate) { img.style.transition = 'transform .2s'; setTimeout(() => { img.style.transition = ''; }, 200); }
-  img.style.transform = '';
-}
-
-function lbApply(img) {
-  img.style.transform = `scale(${lbZoom}) translate(${lbPanX / lbZoom}px,${lbPanY / lbZoom}px)`;
-}
-
-(function () {
-  const lb = document.getElementById('lightbox');
-  let lbCX = 0, lbCY = 0;
-  let lbPinchMidX0 = 0, lbPinchMidY0 = 0;
-  let lbPanX0 = 0, lbPanY0 = 0;
-
-  lb.addEventListener('touchstart', e => {
-    lbActiveImg = lbCurImg();
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      lbPinchDist0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      lbPinchZoom0 = lbZoom;
-      lbPinchMidX0 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      lbPinchMidY0 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      lbPanX0 = lbPanX;
-      lbPanY0 = lbPanY;
-      const galR = document.getElementById('lb-gallery').getBoundingClientRect();
-      lbCX = galR.left + galR.width / 2;
-      lbCY = galR.top + galR.height / 2;
-    } else {
-      lbTouchSX = e.touches[0].clientX;
-      lbTouchSY = e.touches[0].clientY;
-      lbTouchSTime = Date.now();
-      lbDragging = false;
-    }
-  }, { passive: false });
-
-  lb.addEventListener('touchmove', e => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      const newZoom = Math.min(4, Math.max(1, lbPinchZoom0 * (d / lbPinchDist0)));
-      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const imgPtX = (lbPinchMidX0 - lbCX - lbPanX0) / lbPinchZoom0;
-      const imgPtY = (lbPinchMidY0 - lbCY - lbPanY0) / lbPinchZoom0;
-      lbZoom = newZoom;
-      lbPanX = midX - lbCX - imgPtX * newZoom;
-      lbPanY = midY - lbCY - imgPtY * newZoom;
-      if (lbZoom <= 1) { lbZoom = 1; lbPanX = 0; lbPanY = 0; }
-      if (lbActiveImg) { cancelAnimationFrame(lbRafId); lbRafId = requestAnimationFrame(() => lbApply(lbActiveImg)); }
-    } else if (e.touches.length === 1 && lbZoom > 1) {
-      e.preventDefault();
-      lbPanX += e.touches[0].clientX - lbTouchSX;
-      lbPanY += e.touches[0].clientY - lbTouchSY;
-      lbTouchSX = e.touches[0].clientX;
-      lbTouchSY = e.touches[0].clientY;
-      lbDragging = true;
-      if (lbActiveImg) { cancelAnimationFrame(lbRafId); lbRafId = requestAnimationFrame(() => lbApply(lbActiveImg)); }
-    }
-  }, { passive: false });
-
-  lb.addEventListener('touchend', e => {
-    const cx = e.changedTouches[0].clientX, cy = e.changedTouches[0].clientY;
-    const dx = cx - lbTouchSX, dy = cy - lbTouchSY;
-    const dt = Date.now() - lbTouchSTime;
-    if (lbZoom === 1 && dy > 80 && Math.abs(dx) < 80 && dt < 400) { closeLightbox(); return; }
-    if (!lbDragging && Math.hypot(dx, dy) < 12 && dt < 250) {
-      const now = Date.now();
-      if (now - lbLastTap < 350) {
-        const img = lbCurImg();
-        if (img) {
-          if (lbZoom === 1) {
-            lbZoom = 2.5;
-            img.style.transition = 'transform .2s';
-            lbApply(img);
-            setTimeout(() => { img.style.transition = ''; }, 200);
-          } else { lbResetZoom(true); }
-        }
-        lbLastTap = 0;
-      } else { lbLastTap = now; }
-    }
-    lbDragging = false;
-  }, { passive: true });
-})();
-
 /* ── 시작 ── */
 if (myN) {
   renderMain();
+  startNotificationPolling();
   document.getElementById('s-nick').className = 'screen right';
   document.getElementById('s-main').className = 'screen active';
   screenHistory = ['s-main'];
