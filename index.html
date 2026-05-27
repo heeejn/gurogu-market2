@@ -203,9 +203,14 @@
     .noti-time { font-size: 10px; color: var(--text3); margin-top: 6px; font-weight: 700; }
 
     /* ─── 사진 확대 ─── */
-    .photo-modal { position: fixed; inset: 0; z-index: 1200; background: rgba(8,10,18,.92); display: flex; align-items: center; justify-content: center; padding: 18px; }
-    .photo-modal img { max-width: 100%; max-height: 88dvh; object-fit: contain; border-radius: 8px; background: #fff; }
+    .photo-modal { position: fixed; inset: 0; z-index: 1200; background: rgba(8,10,18,.92); display: flex; align-items: center; justify-content: center; padding: 18px; overflow: auto; overscroll-behavior: contain; }
+    .photo-modal img { max-width: 100%; max-height: 88dvh; object-fit: contain; border-radius: 8px; background: #fff; transform: scale(var(--zoom, 1)); transform-origin: center center; transition: transform .16s ease; cursor: zoom-in; }
+    .photo-modal.zoomed { align-items: flex-start; justify-content: flex-start; }
+    .photo-modal.zoomed img { max-width: none; max-height: none; width: min(92vw, 430px); cursor: zoom-out; }
     .photo-modal-close { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 999px; border: .5px solid rgba(255,255,255,.28); background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; }
+    .photo-zoom-controls { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 8px; background: rgba(255,255,255,.13); border: .5px solid rgba(255,255,255,.22); border-radius: 999px; padding: 7px; backdrop-filter: blur(8px); }
+    .photo-zoom-controls button { width: 34px; height: 34px; border-radius: 999px; border: .5px solid rgba(255,255,255,.28); background: rgba(255,255,255,.18); color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .photo-zoom-label { min-width: 42px; height: 34px; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
 
     /* ─── 판매 등록 ─── */
     .sell-body { padding: 14px; }
@@ -217,8 +222,10 @@
     .img-zone { width: 100%; min-height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
     .img-zone.has-img { align-items: stretch; justify-content: flex-start; border-style: solid; padding: 8px; background: var(--surface); overflow-x: auto; }
     .img-zone.has-img::-webkit-scrollbar { display: none; }
-    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; position: relative; }
     .photo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .photo-del { position: absolute; top: 5px; right: 5px; width: 24px; height: 24px; border: 1px solid rgba(255,255,255,.85); background: rgba(20,20,40,.68); color: #fff; border-radius: 999px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .photo-add { width: 112px; aspect-ratio: 1; border: 1px dashed var(--br2); border-radius: 10px; background: var(--bg); color: var(--text3); flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; font-weight: 700; cursor: pointer; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
     .reg-btn:active { background: var(--pink-dark); }
 
@@ -460,6 +467,7 @@ function openPhotoModal(src) {
   const modal = document.createElement('div');
   modal.className = 'photo-modal';
   modal.id = '_photoModal';
+  modal.style.setProperty('--zoom', '1');
   const close = document.createElement('button');
   close.className = 'photo-modal-close';
   close.setAttribute('aria-label', '닫기');
@@ -468,14 +476,37 @@ function openPhotoModal(src) {
   const img = document.createElement('img');
   img.src = src;
   img.alt = '확대된 상품 사진';
-  modal.append(close, img);
+  img.ondblclick = e => {
+    e.stopPropagation();
+    setPhotoZoom(photoZoomLevel > 1 ? 1 : 2);
+  };
+  const controls = document.createElement('div');
+  controls.className = 'photo-zoom-controls';
+  controls.innerHTML = `
+    <button onclick="event.stopPropagation();setPhotoZoom(photoZoomLevel - 0.5)" aria-label="축소"><i class="ti ti-minus" aria-hidden="true"></i></button>
+    <div class="photo-zoom-label" id="_photoZoomLabel">1x</div>
+    <button onclick="event.stopPropagation();setPhotoZoom(photoZoomLevel + 0.5)" aria-label="확대"><i class="ti ti-plus" aria-hidden="true"></i></button>
+    <button onclick="event.stopPropagation();setPhotoZoom(1)" aria-label="원본">1x</button>
+  `;
+  modal.append(close, img, controls);
   modal.addEventListener('click', e => {
     if (e.target === modal) closePhotoModal();
   });
   document.body.appendChild(modal);
 }
+let photoZoomLevel = 1;
+function setPhotoZoom(level) {
+  const modal = document.getElementById('_photoModal');
+  if (!modal) return;
+  photoZoomLevel = Math.max(1, Math.min(3, level));
+  modal.style.setProperty('--zoom', photoZoomLevel);
+  modal.classList.toggle('zoomed', photoZoomLevel > 1);
+  const label = document.getElementById('_photoZoomLabel');
+  if (label) label.textContent = `${photoZoomLevel.toFixed(photoZoomLevel % 1 ? 1 : 0)}x`;
+}
 function closePhotoModal() {
   document.getElementById('_photoModal')?.remove();
+  photoZoomLevel = 1;
 }
 
 /* ── 화면 전환 ── */
@@ -791,8 +822,13 @@ document.getElementById('f-edit').addEventListener('change', async e => {
 document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
-  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 1400, .88)));
-  itemThumbs = await Promise.all(files.map(f => readItemImage(f, 520, .76)));
+  const [newPhotos, newThumbs] = await Promise.all([
+    Promise.all(files.map(f => readItemImage(f, 1400, .88))),
+    Promise.all(files.map(f => readItemImage(f, 520, .76))),
+  ]);
+  itemPhotos = [...itemPhotos, ...newPhotos].slice(0, 10);
+  itemThumbs = [...itemThumbs, ...newThumbs].slice(0, 10);
+  e.target.value = '';
   renderItemPhotoZone();
 });
 
@@ -920,7 +956,61 @@ async function hydrateVisiblePhotos(ids, q) {
 
 function prefetchVisibleDetails(q) {
   const visible = filterMainItems(q).slice(0, 16);
-  visible.forEach(i => hydrateItemPhotos(i.id, q));
+  const missing = visible
+    .filter(i => !(itemThumbList(i.emoji).length || itemPhotoList(i.emoji).length) && !photoHydrationPromises.has(i.id))
+    .map(i => i.id);
+  hydrateVisiblePhotoBatch(missing, q);
+  visible
+    .filter(i => itemThumbList(i.emoji).length || itemPhotoList(i.emoji).length)
+    .forEach(i => hydrateItemPhotos(i.id, q));
+}
+
+async function hydrateVisiblePhotoBatch(ids, q) {
+  const targets = ids.filter(id => !hydratedPhotoIds.has(id) && !photoHydrationPromises.has(id));
+  if (!targets.length) return;
+  targets.forEach(id => hydratingPhotoIds.add(id));
+  const inFilter = `in.(${targets.join(',')})`;
+  const columnSets = [
+    'id,emoji,seller_photo,category,thumbnail_url,photo_urls',
+    'id,emoji,seller_photo,category,thumbnail_url',
+    'id,emoji,seller_photo,category',
+    'id,emoji,category',
+  ];
+  let rows = null;
+  let error = null;
+  for (const columns of columnSets) {
+    const res = await restRows(`items?select=${encodeURIComponent(columns)}&id=${encodeURIComponent(inFilter)}&limit=${targets.length}`, 10000);
+    rows = res.data;
+    error = res.error;
+    if (!error) break;
+    if (error.code !== '42703') break;
+  }
+  targets.forEach(id => hydratingPhotoIds.delete(id));
+  if (error || !rows) {
+    targets.forEach(id => hydrateItemPhotos(id, q));
+    return;
+  }
+
+  const byId = new Map(rows.map(r => [r.id, r]));
+  let changed = false;
+  cachedItems = cachedItems.map(item => {
+    const data = byId.get(item.id);
+    if (!data) return item;
+    const nextEmoji = itemRecordPayload(data) || data.emoji || item.emoji || '';
+    const thumbs = itemThumbList(nextEmoji);
+    if (thumbs[0]) rememberItemThumbs(item.id, thumbs);
+    hydratedPhotoIds.add(item.id);
+    changed = true;
+    return {
+      ...item,
+      ...data,
+      emoji: nextEmoji || item.emoji,
+      seller_photo: data.seller_photo || item.seller_photo || '',
+      likeCount: item.likeCount ?? 0,
+      commentCount: item.commentCount ?? 0,
+    };
+  });
+  if (changed && q !== undefined) renderMainList(q, false);
 }
 
 async function hydrateItemPhotos(id, q) {
@@ -1817,8 +1907,17 @@ function renderItemPhotoZone() {
   if (!z) return;
   z.className = 'img-zone' + (itemPhotos.length ? ' has-img' : '');
   z.innerHTML = itemPhotos.length
-    ? itemPhotos.map((p, idx) => `<div class="photo-preview"><img src="${p}" alt="상품 사진 ${idx + 1}"></div>`).join('')
+    ? itemPhotos.map((p, idx) => `<div class="photo-preview">
+        <img src="${p}" alt="상품 사진 ${idx + 1}">
+        <button class="photo-del" onclick="event.stopPropagation();removeItemPhoto(${idx})" aria-label="사진 삭제"><i class="ti ti-x" aria-hidden="true" style="font-size:15px;"></i></button>
+      </div>`).join('') + `<div class="photo-add" onclick="event.stopPropagation();document.getElementById('f-item').click()"><i class="ti ti-plus" aria-hidden="true" style="font-size:20px;"></i><span>추가</span></div>`
     : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
+}
+
+function removeItemPhoto(idx) {
+  itemPhotos.splice(idx, 1);
+  itemThumbs.splice(idx, 1);
+  renderItemPhotoZone();
 }
 
 async function doAddItem() {
