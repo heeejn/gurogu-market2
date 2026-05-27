@@ -57,17 +57,18 @@
     .sub-right { display: flex; gap: 6px; }
 
     /* ─── 히어로 ─── */
-    .hero { background: var(--surface); padding: 14px 14px 13px; border-bottom: .5px solid var(--br); }
-    .hero p { font-size: 13px; color: var(--text2); line-height: 1.65; margin-bottom: 12px; }
+    .hero { background: var(--surface); padding: 13px 14px 12px; border-bottom: .5px solid var(--br); }
+    .hero p { font-size: 14px; color: var(--text2); line-height: 1.5; margin-bottom: 3px; font-weight: 400; }
+    .hero p:last-of-type { margin-bottom: 9px; }
     .search-row { display: flex; gap: 7px; }
     .search-row input { flex: 1; height: 38px; border: .5px solid var(--br2); border-radius: 10px; padding: 0 12px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; }
     .search-row input:focus { outline: none; border-color: var(--pink); }
     .search-row button { height: 38px; padding: 0 14px; background: var(--pink); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; }
 
     /* ─── 필터 / 탭 ─── */
-    .filter-bar { display: flex; gap: 6px; padding: 10px 14px; background: var(--surface); border-bottom: .5px solid var(--br); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .filter-bar { display: flex; gap: 8px; padding: 10px 14px; background: var(--surface); border-bottom: .5px solid var(--br); overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .filter-bar::-webkit-scrollbar { display: none; }
-    .chip { padding: 5px 13px; border-radius: 999px; border: .5px solid var(--br); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    .chip { min-height: 36px; min-width: max-content; padding: 0 12px; border-radius: 999px; border: .5px solid var(--br); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1; flex: 0 0 auto; }
     .chip.on { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
     .stat-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); }
     .stab { flex: 1; text-align: center; padding: 9px 0; font-size: 13px; font-weight: 700; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; -webkit-tap-highlight-color: transparent; }
@@ -91,21 +92,21 @@
     .mini-av { width: 13px; height: 13px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: 800; color: var(--pur); }
     .mini-av img { width: 100%; height: 100%; object-fit: cover; }
     .heart-btn { position: absolute; top: 6px; right: 6px; background: var(--surface); border: .5px solid var(--br); border-radius: 999px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; -webkit-tap-highlight-color: transparent; }
-    .sold-badge { position: absolute; top: 6px; left: 6px; background: rgba(20,20,40,.55); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
-    .mine-badge { position: absolute; top: 6px; left: 6px; background: var(--pink); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
+    .sold-badge { position: absolute; top: 7px; left: 7px; background: rgba(16,16,32,.92); color: #fff; font-size: 11px; font-weight: 800; padding: 5px 9px; border-radius: 999px; box-shadow: 0 4px 12px rgba(0,0,0,.24); z-index: 3; border: 1px solid rgba(255,255,255,.65); }
+    .mine-badge { position: absolute; top: 7px; left: 7px; background: #D4537E; color: #fff; font-size: 11px; font-weight: 800; padding: 5px 9px; border-radius: 999px; box-shadow: 0 4px 12px rgba(153,53,86,.28); z-index: 3; border: 1px solid rgba(255,255,255,.75); }
     .empty { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; grid-column: span 2; }
 
     /* ─── 상품 상세 ─── */
     .det-gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: var(--surface); }
     .det-gallery::-webkit-scrollbar { display: none; }
-    .det-img { width: 100%; flex: 0 0 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; overflow: hidden; scroll-snap-align: start; }
+    .det-img { width: 100%; flex: 0 0 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 72px; overflow: hidden; scroll-snap-align: start; cursor: zoom-in; }
     .det-img img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
     .det-content { background: var(--surface); padding: 14px; }
     .det-price { font-size: 22px; font-weight: 800; color: var(--pink-dark); margin-bottom: 3px; }
     .det-title { font-size: 15px; font-weight: 800; margin-bottom: 5px; }
     .det-stats { display: flex; gap: 12px; margin-bottom: 8px; }
     .det-stat { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text3); font-weight: 700; }
-    .det-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; word-break: break-word; }
+    .det-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 12px; white-space: pre-wrap; word-break: break-word; }
     .det-seller { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; padding: 10px 12px; background: var(--bg); border-radius: 10px; border: .5px solid var(--br); }
     .det-sav { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--pur-dark); flex-shrink: 0; }
     .det-sav img { width: 100%; height: 100%; object-fit: cover; }
@@ -193,25 +194,31 @@
     .noti-list { padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 8px; }
     .noti-item { background: var(--surface); border: .5px solid var(--br); border-radius: 12px; padding: 11px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .noti-item.unread { border-color: var(--pink-br); background: #FFF8FA; }
+    .noti-top { display: flex; align-items: flex-start; gap: 8px; }
+    .noti-main { flex: 1; min-width: 0; }
+    .noti-del { width: 28px; height: 28px; border: .5px solid var(--br2); background: var(--surface); color: var(--text3); border-radius: 999px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .noti-del:active { background: #FFF5F6; color: #B4233B; border-color: #F2B8C2; }
     .noti-title { font-size: 12px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
     .noti-msg { font-size: 12px; color: var(--text2); line-height: 1.45; }
     .noti-time { font-size: 10px; color: var(--text3); margin-top: 6px; font-weight: 700; }
+
+    /* ─── 사진 확대 ─── */
+    .photo-modal { position: fixed; inset: 0; z-index: 1200; background: rgba(8,10,18,.92); display: flex; align-items: center; justify-content: center; padding: 18px; }
+    .photo-modal img { max-width: 100%; max-height: 88dvh; object-fit: contain; border-radius: 8px; background: #fff; }
+    .photo-modal-close { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 999px; border: .5px solid rgba(255,255,255,.28); background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; }
 
     /* ─── 판매 등록 ─── */
     .sell-body { padding: 14px; }
     .fr { margin-bottom: 10px; }
     .fr label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 4px; }
     .fr input, .fr select, .fr textarea { width: 100%; border: .5px solid var(--br2); border-radius: 10px; padding: 9px 11px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; resize: none; }
-    .fr textarea { min-height: 110px; resize: vertical; }
+    .fr textarea { height: 80px; }
     .fr input:focus, .fr select:focus, .fr textarea:focus { outline: none; border-color: var(--pink); background: var(--surface); }
     .img-zone { width: 100%; min-height: 132px; border: 1px dashed var(--br2); border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--text3); font-size: 13px; font-weight: 700; cursor: pointer; background: var(--bg); overflow: hidden; }
     .img-zone.has-img { align-items: stretch; justify-content: flex-start; border-style: solid; padding: 8px; background: var(--surface); overflow-x: auto; }
     .img-zone.has-img::-webkit-scrollbar { display: none; }
-    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; position: relative; }
+    .photo-preview { width: 112px; aspect-ratio: 1; border: .5px solid var(--br); border-radius: 10px; overflow: hidden; background: var(--bg); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
     .photo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .photo-del-btn { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; background: rgba(0,0,0,.55); color: #fff; border: none; border-radius: 50%; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; font-family: inherit; -webkit-tap-highlight-color: transparent; z-index: 2; }
-    .photo-add-btn { width: 112px; aspect-ratio: 1; border: 1px dashed var(--br2); border-radius: 10px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--text3); cursor: pointer; background: var(--bg); -webkit-tap-highlight-color: transparent; }
-    .made-by { text-align: center; font-size: 11px; color: var(--text3); padding: 18px 0 10px; font-weight: 700; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
     .reg-btn:active { background: var(--pink-dark); }
 
@@ -278,7 +285,7 @@ let myN = localStorage.getItem('gurogu_nickname') || '';
 let myP = localStorage.getItem('gurogu_profile_photo') || '';
 let itemPhotos = [];
 let itemThumbs = [];
-let catF = '전체', statF = '전체';
+let catF = '전체', statF = '판매중';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
 const PHOTO_CACHE_PREFIX = 'gurogu_item_thumb_';
@@ -348,10 +355,10 @@ function getCachedThumb(id) {
 function getCachedThumbs(id) {
   const raw = getCachedThumb(id);
   if (!raw) return [];
-  if (isPhotoRef(raw)) return [raw];
+  if (isImg(raw)) return [raw];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isPhotoRef) : [];
+    return Array.isArray(parsed) ? parsed.filter(isImg) : [];
   } catch (e) {
     return [];
   }
@@ -381,11 +388,8 @@ function rememberItemThumbs(id, thumbs) {
 }
 function itemRecordPayload(item) {
   const photos = Array.isArray(item?.photo_urls) ? item.photo_urls.filter(isPhotoRef) : [];
-  const thumb = item?.thumbnail_url && isImgUrl(item.thumbnail_url) ? item.thumbnail_url : '';
-  if (!photos.length && !thumb) return '';
-  const effectivePhotos = photos.length ? photos : [thumb];
-  const effectiveThumbs = thumb ? [thumb] : photos;
-  return JSON.stringify({ photos: effectivePhotos, thumbs: effectiveThumbs });
+  const thumbs = item?.thumbnail_url ? [item.thumbnail_url] : [];
+  return photos.length || thumbs.length ? itemPayload(photos, item.category, thumbs) : '';
 }
 function getCachedComments(id) {
   try {
@@ -411,29 +415,27 @@ function forgetCachedComments(id) {
 }
 function itemMedia(v, category) {
   const thumbs = itemThumbList(v);
-  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진" loading="lazy" decoding="async">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
+  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading"><i class="ti ti-photo" aria-hidden="true"></i></div>';
+}
+function jsStr(v) {
+  return JSON.stringify(String(v || ''));
 }
 function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
-    lbPhotos = thumbs;
-    return thumbs.map((p, i) => `<div class="det-img det-img-pending" onclick="openLightbox(lbPhotos,${i})"><img src="${p}" alt="상품 사진" loading="eager" decoding="async"></div>`).join('');
+    return thumbs.map(p => `<div class="det-img det-img-pending" onclick="openPhotoModal(${jsStr(p)})"><img src="${p}" alt="상품 사진"></div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
-    return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'}">${fallback}</div>`;
+    return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'};cursor:default;">${fallback}</div>`;
   }
-  lbPhotos = photos;
-  return photos.map((p, i) => `<div class="det-img" onclick="openLightbox(lbPhotos,${i})" style="cursor:zoom-in"><img src="${p}" alt="상품 사진 ${i+1}" loading="eager" decoding="async"></div>`).join('');
+  return photos.map(p => `<div class="det-img" onclick="openPhotoModal(${jsStr(p)})"><img src="${p}" alt="상품 사진"></div>`).join('');
 }
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, m => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[m]));
-}
-function formatDesc(v) {
-  return esc(String(v ?? '')).replace(/\r\n|\r|\n/g, '<br>');
 }
 function saveProfile() {
   if (myN) localStorage.setItem('gurogu_nickname', myN);
@@ -452,6 +454,28 @@ function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2200);
+}
+function openPhotoModal(src) {
+  if (!src || document.getElementById('_photoModal')) return;
+  const modal = document.createElement('div');
+  modal.className = 'photo-modal';
+  modal.id = '_photoModal';
+  const close = document.createElement('button');
+  close.className = 'photo-modal-close';
+  close.setAttribute('aria-label', '닫기');
+  close.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>';
+  close.onclick = closePhotoModal;
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '확대된 상품 사진';
+  modal.append(close, img);
+  modal.addEventListener('click', e => {
+    if (e.target === modal) closePhotoModal();
+  });
+  document.body.appendChild(modal);
+}
+function closePhotoModal() {
+  document.getElementById('_photoModal')?.remove();
 }
 
 /* ── 화면 전환 ── */
@@ -683,25 +707,20 @@ function readFile(file) {
   });
 }
 function readItemImage(file, max = 900, quality = .78) {
-  return readItemImageBoth(file, max, quality).then(r => r.photo);
-}
-function readItemImageBoth(file, maxPhoto = 1400, maxThumb = 520) {
   return new Promise(res => {
     const r = new FileReader();
     r.onload = e => {
       const img = new Image();
       img.onload = () => {
-        const resize = (max, q) => {
-          const scale = Math.min(1, max / Math.max(img.width, img.height));
-          const c = document.createElement('canvas');
-          c.width = Math.round(img.width * scale);
-          c.height = Math.round(img.height * scale);
-          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-          return c.toDataURL('image/jpeg', q);
-        };
-        res({ photo: resize(maxPhoto, .88), thumb: resize(maxThumb, .76) });
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(canvas.toDataURL('image/jpeg', quality));
       };
-      img.onerror = () => res({ photo: e.target.result, thumb: e.target.result });
+      img.onerror = () => res(e.target.result);
       img.src = e.target.result;
     };
     r.readAsDataURL(file);
@@ -723,12 +742,17 @@ function makeThumbFromDataUrl(src, max = 360, quality = .68) {
     img.src = src;
   });
 }
-async function dataUrlToBlob(dataUrl) {
-  return fetch(dataUrl).then(r => r.blob());
+function dataUrlToBlob(dataUrl) {
+  const [head, body] = dataUrl.split(',');
+  const mime = (head.match(/data:(.*?);/) || [])[1] || 'image/jpeg';
+  const bin = atob(body || '');
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
 }
 async function uploadImageDataUrl(dataUrl, folder = 'items') {
   if (isImgUrl(dataUrl)) return dataUrl;
-  const blob = await dataUrlToBlob(dataUrl);
+  const blob = dataUrlToBlob(dataUrl);
   const path = `${folder}/${userKey}/${Date.now()}-${crypto.randomUUID()}.jpg`;
   const { error } = await sb.storage
     .from('item-images')
@@ -738,13 +762,19 @@ async function uploadImageDataUrl(dataUrl, folder = 'items') {
   return data.publicUrl;
 }
 async function uploadItemImages(photos, thumbs) {
-  const [photoUrls, thumbnailUrl] = await Promise.all([
-    Promise.all(photos.map(p => isImgUrl(p) ? Promise.resolve(p) : uploadImageDataUrl(p, 'items'))),
-    thumbs[0]
-      ? (isImgUrl(thumbs[0]) ? Promise.resolve(thumbs[0]) : uploadImageDataUrl(thumbs[0], 'thumbs'))
-      : Promise.resolve(''),
-  ]);
-  return { photoUrls, thumbnailUrl: thumbnailUrl || photoUrls[0] || '' };
+  const photoUrls = [];
+  for (const photo of photos) {
+    photoUrls.push(isImgUrl(photo) ? photo : await uploadImageDataUrl(photo, 'items'));
+  }
+
+  let thumbnailUrl = '';
+  if (thumbs[0]) {
+    thumbnailUrl = isImgUrl(thumbs[0]) ? thumbs[0] : await uploadImageDataUrl(thumbs[0], 'thumbs');
+  } else if (photoUrls[0]) {
+    thumbnailUrl = photoUrls[0];
+  }
+
+  return { photoUrls, thumbnailUrl };
 }
 document.getElementById('f-init').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
@@ -761,41 +791,75 @@ document.getElementById('f-edit').addEventListener('change', async e => {
 document.getElementById('f-item').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
-  const results = await Promise.all(files.map(f => readItemImageBoth(f)));
-  itemPhotos = [...itemPhotos, ...results.map(r => r.photo)];
-  itemThumbs = [...itemThumbs, ...results.map(r => r.thumb)];
-  e.target.value = '';
+  itemPhotos = await Promise.all(files.map(f => readItemImage(f, 1400, .88)));
+  itemThumbs = await Promise.all(files.map(f => readItemImage(f, 520, .76)));
   renderItemPhotoZone();
 });
 
 /* ════════════════════════════════
    Supabase 데이터 함수
 ════════════════════════════════ */
-async function fetchItems() {
-  let { data, error } = await sb
-    .from('items')
-    .select('id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls')
-    .order('created_at', { ascending: false })
-    .limit(500);
-  if (error?.code === '42703') {
-    console.warn('photo_urls/thumbnail_url 컬럼이 아직 없어 기존 방식으로 불러옵니다.', error);
-    const fallback = await sb
-      .from('items')
-      .select('id,title,price,category,description,seller_name,seller_photo,sold,created_at')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    data = fallback.data;
-    error = fallback.error;
+async function restRows(path, ms = 6000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        authorization: `Bearer ${SUPABASE_KEY}`,
+      },
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    return {
+      data: res.ok ? JSON.parse(text || '[]') : null,
+      error: res.ok ? null : JSON.parse(text || '{}'),
+    };
+  } catch (e) {
+    return { data: null, error: e };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+async function fetchItems() {
+  const columnSets = [
+    'id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url',
+    'id,title,price,category,description,seller_name,sold,created_at,thumbnail_url',
+    'id,title,price,category,description,seller_name,sold,created_at',
+  ];
+  let data = null;
+  let error = null;
+
+  for (const columns of columnSets) {
+    const res = await restRows(`items?select=${encodeURIComponent(columns)}&limit=200`);
+    data = res.data;
+    error = res.error;
+    if (!error) break;
+    if (error.name === 'AbortError') continue;
+    if (error.code !== '42703') break;
+    console.warn('일부 컬럼이 없어 더 기본 형태로 상품을 불러옵니다.', error);
+  }
+
   if (error) { console.error(JSON.stringify(error)); return null; }
-  return data.filter(i => i.description !== DELETED_MARK).map(i => ({
-    ...i,
-    emoji: itemRecordPayload(i) || cachedThumbPayload(i.id),
-    seller_photo: i.seller_photo || '',
+	  return data
+      .filter(i => i.description !== DELETED_MARK)
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+      .map(i => ({
+	    ...i,
+	    emoji: itemRecordPayload(i) || i.emoji || cachedThumbPayload(i.id),
+	    seller_photo: i.seller_photo || '',
     likeCount: i.likeCount || 0,
     commentCount: i.commentCount || 0,
-  }));
+	  }));
 	}
+
+function withTimeout(promise, ms, fallback = null) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
 
 function mergeFetchedItems(freshItems) {
   const oldById = new Map(cachedItems.map(i => [i.id, i]));
@@ -816,20 +880,23 @@ function mergeFetchedItems(freshItems) {
 
 async function fetchItemCounts(items) {
   const ids = items.map(i => i.id);
+  const idSet = new Set(ids);
   const empty = { likes: new Map(), comments: new Map() };
   if (!ids.length) return empty;
 
   const [likesRes, commentsRes] = await Promise.all([
-    sb.from('likes').select('item_id').in('item_id', ids),
-    sb.from('comments').select('item_id').in('item_id', ids),
+    restRows('likes?select=item_id&limit=5000'),
+    restRows('comments?select=item_id&limit=5000'),
   ]);
-  if (likesRes.error) console.error(likesRes.error);
-  if (commentsRes.error) console.error(commentsRes.error);
+  if (likesRes.error || commentsRes.error) {
+    console.error(likesRes.error || commentsRes.error);
+    return null;
+  }
 
   const likes = new Map();
   const comments = new Map();
-  (likesRes.data || []).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
-  (commentsRes.data || []).forEach(c => comments.set(c.item_id, (comments.get(c.item_id) || 0) + 1));
+  (likesRes.data || []).filter(l => idSet.has(l.item_id)).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
+  (commentsRes.data || []).filter(c => idSet.has(c.item_id)).forEach(c => comments.set(c.item_id, (comments.get(c.item_id) || 0) + 1));
   return { likes, comments };
 }
 
@@ -852,9 +919,8 @@ async function hydrateVisiblePhotos(ids, q) {
 }
 
 function prefetchVisibleDetails(q) {
-  const visible = filterMainItems(q).slice(0, 10);
+  const visible = filterMainItems(q).slice(0, 16);
   visible.forEach(i => hydrateItemPhotos(i.id, q));
-  visible.slice(0, 6).forEach(i => loadCommentsData(i.id));
 }
 
 async function hydrateItemPhotos(id, q) {
@@ -865,19 +931,20 @@ async function hydrateItemPhotos(id, q) {
 
   const promise = (async () => {
     hydratingPhotoIds.add(id);
-    let { data, error } = await sb
-      .from('items')
-      .select('id,emoji,seller_photo,category,thumbnail_url,photo_urls')
-      .eq('id', id)
-      .single();
-    if (error?.code === '42703') {
-      const fallback = await sb
-        .from('items')
-        .select('id,emoji,seller_photo,category')
-        .eq('id', id)
-        .single();
-      data = fallback.data;
-      error = fallback.error;
+    const columnSets = [
+      'id,emoji,seller_photo,category,thumbnail_url,photo_urls',
+      'id,emoji,seller_photo,category,thumbnail_url',
+      'id,emoji,seller_photo,category',
+      'id,emoji,category',
+    ];
+    let data = null;
+    let error = null;
+    for (const columns of columnSets) {
+      const res = await restRows(`items?select=${encodeURIComponent(columns)}&id=eq.${encodeURIComponent(id)}&limit=1`);
+      data = (res.data || [])[0] || null;
+      error = res.error;
+      if (!error) break;
+      if (error.code !== '42703') break;
     }
     hydratingPhotoIds.delete(id);
     if (error || !data) return existing;
@@ -895,14 +962,20 @@ async function hydrateItemPhotos(id, q) {
     if (thumbs[0]) rememberItemThumbs(id, thumbs);
     hydratedPhotoIds.add(id);
 
-    const merged = {
-      ...(existing || {}),
-      ...data,
-      emoji: nextEmoji,
-      seller_photo: data.seller_photo || existing?.seller_photo || '',
-    };
-    cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...merged } : i);
-    if (q !== undefined) renderMainList(q);
+    let merged = existing;
+    cachedItems = cachedItems.map(i => {
+      if (i.id !== id) return i;
+      merged = {
+        ...i,
+        ...data,
+        emoji: nextEmoji,
+        seller_photo: data.seller_photo || i.seller_photo || existing?.seller_photo || '',
+        likeCount: i.likeCount ?? existing?.likeCount ?? 0,
+        commentCount: i.commentCount ?? existing?.commentCount ?? 0,
+      };
+      return merged;
+    });
+    if (q !== undefined) renderMainList(q, false);
     return merged;
   })();
 
@@ -914,7 +987,7 @@ async function hydrateItemPhotos(id, q) {
 async function fetchComments(itemId) {
   const { data, error } = await sb
     .from('comments')
-    .select('id,item_id,parent_id,author_name,author_photo,content,created_at')
+    .select('id,item_id,parent_id,author_name,content,created_at')
     .eq('item_id', itemId)
     .order('created_at', { ascending: true });
   if (error) { console.error(error); return []; }
@@ -1005,14 +1078,13 @@ async function isLiked(itemId) {
 
 async function fetchLikedItemIds(items) {
   const ids = items.map(i => i.id);
+  const idSet = new Set(ids);
   if (!ids.length) return new Set();
-  const { data, error } = await sb
-    .from('likes')
-    .select('item_id')
-    .eq('user_key', userKey)
-    .in('item_id', ids);
+  const { data, error } = await restRows(
+    `likes?select=item_id&user_key=eq.${encodeURIComponent(userKey)}&limit=5000`
+  );
   if (error) { console.error(error); return new Set(); }
-  return new Set((data || []).map(l => l.item_id));
+  return new Set((data || []).map(l => l.item_id).filter(id => idSet.has(id)));
 }
 
 async function fetchLikeCount(itemId) {
@@ -1033,12 +1105,13 @@ async function hydrateMainMeta(q) {
   ]);
   likedItemIds = liked;
   likedItemIdsReady = true;
+  if (!counts) return;
   cachedItems = cachedItems.map(i => ({
     ...i,
     likeCount: counts.likes.get(i.id) || 0,
     commentCount: counts.comments.get(i.id) || 0,
   }));
-  renderMainList(q);
+  renderMainList(q, false);
 
 }
 
@@ -1122,32 +1195,56 @@ async function renderMain(q) {
   <div class="hero">
     <p>안 쓰는 물건에게 새 주인을 찾아주세요!</p>
     <p>뜻밖의 득템이 기다리는 구로구마켓 👀</p>
-    <div style="height:12px;"></div>
     <div class="search-row">
       <input type="text" id="_sq" placeholder="어떤 물건을 찾고 계세요?" value="${q}" oninput="renderMainList(this.value)">
       <button onclick="renderMainList(document.getElementById('_sq').value)">검색</button>
     </div>
   </div>
   <div class="filter-bar">
-    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" onclick="catF='${c}';renderMain()">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
+    ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" data-cat="${c}" onclick="selectCategory('${c}')">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
   </div>
   <div class="stat-tabs">
-    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" onclick="statF='${s}';renderMain()">${s}</div>`).join('')}
+    ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" data-stat="${s}" onclick="selectStatus('${s}')">${s}</div>`).join('')}
   </div>
-  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div><div class="made-by">Made by 윤듬듬🐢</div></div>`;
+  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
 
-  if (cachedItems.length) renderMainList(q);
+  if (cachedItems.length) renderMainList(q, false);
 
   updateNotificationBadge();
-  const items = await fetchItems();
+  const itemFetch = fetchItems();
+  const items = await withTimeout(itemFetch, 15000, null);
   if (items) cachedItems = mergeFetchedItems(items);
   else toast('상품을 불러오지 못해서 기존 목록을 유지했어요');
-  renderMainList(q);
+  renderMainList(q, false);
   hydrateMainMeta(q);
   pollNotifications();
+  if (!items) {
+    itemFetch.then(lateItems => {
+      if (!lateItems) return;
+      cachedItems = mergeFetchedItems(lateItems);
+      renderMainList(document.getElementById('_sq')?.value || '', false);
+      hydrateMainMeta(document.getElementById('_sq')?.value || '');
+    });
+  }
 }
 
-function renderMainList(q) {
+function selectCategory(category) {
+  catF = category;
+  document.querySelectorAll('#s-main .chip').forEach(chip => {
+    chip.classList.toggle('on', chip.dataset.cat === category);
+  });
+  renderMainList(document.getElementById('_sq')?.value || '');
+}
+
+function selectStatus(status) {
+  statF = status;
+  document.querySelectorAll('#s-main .stab').forEach(tab => {
+    tab.classList.toggle('on', tab.dataset.stat === status);
+  });
+  renderMainList(document.getElementById('_sq')?.value || '');
+}
+
+function renderMainList(q, shouldPrefetch = true) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
 
   let list = filterMainItems(q);
@@ -1157,7 +1254,7 @@ function renderMainList(q) {
   grid.innerHTML = list.length
     ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
     : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
-  prefetchSoon(q);
+  if (shouldPrefetch) prefetchSoon(q);
 }
 
 let prefetchTimer;
@@ -1282,7 +1379,7 @@ function renderDetLoading(it) {
   <div class="det-content">
     <div class="det-price">${(it.price || 0).toLocaleString()}원</div>
     <div class="det-title">${esc(it.title || '상품')}</div>
-    <div class="det-desc">${formatDesc(it.description)}</div>
+    <div class="det-desc">${esc(it.description || '')}</div>
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
@@ -1310,11 +1407,11 @@ function renderDet() {
   <div class="det-content">
     <div class="det-price">${it.price.toLocaleString()}원</div>
     <div class="det-title">${esc(it.title)}</div>
-    <div class="det-stats" style="margin-bottom:4px;">
+    <div class="det-stats">
       <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> <span id="_det-like-cnt">${it.likeCount || 0}</span></div>
       <div class="det-stat"><i class="ti ti-message-circle" aria-hidden="true" style="font-size:13px;"></i> 댓글 <span id="_cmt-cnt">${it.commentCount || 0}</span></div>
     </div>
-    <div class="det-desc">${formatDesc(it.description)}</div>
+    <div class="det-desc">${esc(it.description || '')}</div>
     <div class="det-seller">
       <div class="det-sav">${av(p, it.seller_name, 28)}</div>
       <div class="det-sname">${it.seller_name} 님</div>
@@ -1557,15 +1654,36 @@ function renderNotifications() {
   </div>
   <div class="noti-list">
     ${list.length
-      ? list.map(n => `<div class="noti-item${n.read ? '' : ' unread'}" onclick="openDet('${n.item_id}')">
-          <div class="noti-title">${esc(n.title || '내 상품')}</div>
-          <div class="noti-msg">${esc(n.message || '')}</div>
-          <div class="noti-time">${relTime(n.created_at)}</div>
+      ? list.map(n => `<div class="noti-item${n.read ? '' : ' unread'}" onclick="openNotificationItem('${esc(n.item_id || '')}')">
+          <div class="noti-top">
+            <div class="noti-main">
+              <div class="noti-title">${esc(n.title || '내 상품')}</div>
+              <div class="noti-msg">${esc(n.message || '')}</div>
+              <div class="noti-time">${relTime(n.created_at)}</div>
+            </div>
+            <button class="noti-del" onclick="event.stopPropagation();deleteNotification('${n.id}')" aria-label="알림 삭제"><i class="ti ti-trash" aria-hidden="true" style="font-size:15px;"></i></button>
+          </div>
         </div>`).join('')
       : '<div class="empty-my">아직 새 알림이 없어요</div>'}
   </div>`;
 
   pollNotifications();
+}
+
+function openNotificationItem(itemId) {
+  if (!itemId) {
+    toast('상품 정보를 찾지 못했어요');
+    return;
+  }
+  openDet(itemId);
+}
+
+function deleteNotification(id) {
+  const next = loadNotifications().filter(n => n.id !== id);
+  saveNotifications(next);
+  updateNotificationBadge();
+  renderNotifications();
+  toast('알림을 삭제했어요');
 }
 
 /* ════════════════════════════════
@@ -1697,25 +1815,10 @@ function renderSell(item = null) {
 function renderItemPhotoZone() {
   const z = document.getElementById('_itemphoto');
   if (!z) return;
-  if (itemPhotos.length) {
-    z.className = 'img-zone has-img';
-    z.onclick = null;
-    z.innerHTML = itemPhotos.map((p, idx) => `
-      <div class="photo-preview">
-        <img src="${p}" alt="상품 사진 ${idx + 1}">
-        <button class="photo-del-btn" type="button" onclick="event.stopPropagation();removePhoto(${idx})">×</button>
-      </div>`).join('') +
-      `<div class="photo-add-btn" onclick="document.getElementById('f-item').click()"><i class="ti ti-plus" aria-hidden="true"></i></div>`;
-  } else {
-    z.className = 'img-zone';
-    z.onclick = () => document.getElementById('f-item').click();
-    z.innerHTML = `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
-  }
-}
-function removePhoto(idx) {
-  itemPhotos.splice(idx, 1);
-  itemThumbs.splice(idx, 1);
-  renderItemPhotoZone();
+  z.className = 'img-zone' + (itemPhotos.length ? ' has-img' : '');
+  z.innerHTML = itemPhotos.length
+    ? itemPhotos.map((p, idx) => `<div class="photo-preview"><img src="${p}" alt="상품 사진 ${idx + 1}"></div>`).join('')
+    : `<i class="ti ti-camera" aria-hidden="true" style="font-size:20px;"></i> 사진을 올려주세요`;
 }
 
 async function doAddItem() {
@@ -1735,7 +1838,7 @@ async function doAddItem() {
 	      thumbnailUrl: uploaded.thumbnailUrl,
 	    });
 	    toast('상품이 등록됐어요 🎉');
-    statF = '전체'; catF = '전체';
+    statF = '판매중'; catF = '전체';
     goBack();
     await renderMain('');
   } catch (e) {
