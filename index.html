@@ -432,13 +432,17 @@ function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
-    return thumbs.map(p => `<div class="det-img det-img-pending" onclick="openPhotoModal(${jsStr(p)})"><img src="${p}" alt="상품 사진"></div>`).join('');
+    return thumbs.map(p => `<div class="det-img det-img-pending" data-photo="${esc(p)}" onclick="openDetailPhoto(this.dataset.photo)"><img src="${p}" alt="상품 사진"></div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'};cursor:default;">${fallback}</div>`;
   }
-  return photos.map(p => `<div class="det-img" onclick="openPhotoModal(${jsStr(p)})"><img src="${p}" alt="상품 사진"></div>`).join('');
+  return photos.map(p => `<div class="det-img" data-photo="${esc(p)}" onclick="openDetailPhoto(this.dataset.photo)"><img src="${p}" alt="상품 사진"></div>`).join('');
+}
+function openDetailPhoto(src) {
+  if (!src) return;
+  openPhotoModal(src);
 }
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, m => ({
@@ -497,12 +501,47 @@ function openPhotoModal(src) {
     <button onclick="event.stopPropagation();setPhotoZoom(1)" aria-label="원본">1x</button>
   `;
   modal.append(close, img, controls);
+  installPhotoZoomGestures(modal, img);
   modal.addEventListener('click', e => {
     if (e.target === modal) closePhotoModal();
   });
   document.body.appendChild(modal);
 }
 let photoZoomLevel = 1;
+let photoLastTap = 0;
+let photoPinchStart = 0;
+let photoPinchZoom = 1;
+function touchDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(dx, dy);
+}
+function installPhotoZoomGestures(modal, img) {
+  img.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      photoPinchStart = touchDistance(e.touches);
+      photoPinchZoom = photoZoomLevel;
+    }
+  }, { passive: true });
+  img.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !photoPinchStart) return;
+    e.preventDefault();
+    const ratio = touchDistance(e.touches) / photoPinchStart;
+    setPhotoZoom(photoPinchZoom * ratio);
+  }, { passive: false });
+  img.addEventListener('touchend', e => {
+    if (e.touches.length < 2) photoPinchStart = 0;
+    if (e.changedTouches.length !== 1) return;
+    const now = Date.now();
+    if (now - photoLastTap < 280) {
+      e.preventDefault();
+      setPhotoZoom(photoZoomLevel > 1 ? 1 : 2);
+      photoLastTap = 0;
+    } else {
+      photoLastTap = now;
+    }
+  }, { passive: false });
+}
 function setPhotoZoom(level) {
   const modal = document.getElementById('_photoModal');
   if (!modal) return;
@@ -515,6 +554,9 @@ function setPhotoZoom(level) {
 function closePhotoModal() {
   document.getElementById('_photoModal')?.remove();
   photoZoomLevel = 1;
+  photoLastTap = 0;
+  photoPinchStart = 0;
+  photoPinchZoom = 1;
 }
 
 /* ── 화면 전환 ── */
@@ -561,9 +603,11 @@ function setPullRefresh(show, text = '새로고침') {
 function canStartPullRefresh(e) {
   if (ptrRefreshing || e.touches.length !== 1) return false;
   const active = activeScreenEl();
-  if (!active || active.scrollTop > 0) return false;
-  if (e.target.closest('.det-gallery, .det-img, img, input, textarea, select, button, .back-btn, .hbtn, .wish-btn, .img-zone, .photo-preview')) return false;
-  return screenHistory[screenHistory.length - 1] === 's-main' || screenHistory[screenHistory.length - 1] === 's-my';
+  const screen = screenHistory[screenHistory.length - 1];
+  if (!active || active.scrollTop > 2) return false;
+  if (e.target.closest('input, textarea, select, button, .back-btn, .hbtn, .wish-btn, .img-zone, .photo-preview')) return false;
+  if (screen === 's-det' && e.target.closest('.det-gallery, .det-img, img')) return false;
+  return screen === 's-main' || screen === 's-my';
 }
 
 async function refreshActiveScreen() {
@@ -1395,7 +1439,7 @@ function filterMainItems(q) {
 
 function cardH(i, liked) {
   const p = i.seller_name === myN ? myP : (i.seller_photo || '');
-  return `<div class="card" onpointerdown="prefetchItemDetail('${i.id}')" onmouseenter="prefetchItemDetail('${i.id}')" onclick="openDet('${i.id}')">
+  return `<div class="card" onmouseenter="prefetchItemDetail('${i.id}')" onclick="openDet('${i.id}')">
     ${i.sold ? '<div class="sold-badge">판매완료</div>' : ''}
     ${i.seller_name === myN && !i.sold ? '<div class="mine-badge">내 상품</div>' : ''}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
@@ -1516,6 +1560,8 @@ function renderDet() {
   const p = it.seller_name === myN ? myP : (it.seller_photo || '');
   const own = it.seller_name === myN;
   const liked = likedItemIds.has(it.id);
+  const oldGallery = document.querySelector('#s-det .det-gallery');
+  const oldGalleryScroll = oldGallery ? oldGallery.scrollLeft : 0;
 
   document.getElementById('s-det').innerHTML = `
   <div class="sub-hdr">
@@ -1551,6 +1597,11 @@ function renderDet() {
       <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
     </div>
   </div>`;
+
+  requestAnimationFrame(() => {
+    const nextGallery = document.querySelector('#s-det .det-gallery');
+    if (nextGallery && oldGalleryScroll) nextGallery.scrollLeft = oldGalleryScroll;
+  });
 
   loadComments(it.id);
 }
