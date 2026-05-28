@@ -96,6 +96,8 @@
     .sold-badge { position: absolute; top: 7px; left: 7px; background: rgba(16,16,32,.92); color: #fff; font-size: 11px; font-weight: 800; padding: 5px 9px; border-radius: 999px; box-shadow: 0 4px 12px rgba(0,0,0,.24); z-index: 3; border: 1px solid rgba(255,255,255,.65); }
     .mine-badge { position: absolute; top: 7px; left: 7px; background: #D4537E; color: #fff; font-size: 11px; font-weight: 800; padding: 5px 9px; border-radius: 999px; box-shadow: 0 4px 12px rgba(153,53,86,.28); z-index: 3; border: 1px solid rgba(255,255,255,.75); }
     .empty { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.4; grid-column: span 2; }
+    .empty-state { grid-column: span 2; text-align: center; padding: 48px 20px 20px; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.2; }
+    .footer-credit { text-align: center; padding: 18px 0 calc(env(safe-area-inset-bottom, 0px) + 20px); font-size: 11px; color: var(--text3); font-weight: 700; letter-spacing: 0.3px; }
 
     /* ─── 상품 상세 ─── */
     .det-gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; background: var(--surface); }
@@ -245,7 +247,7 @@
     .rv-empty { grid-column: 1 / -1; text-align: center; padding: 48px 0 20px; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.5; }
     /* 후기 작성/수정 모달 */
     .rv-modal { position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,.46); display: flex; align-items: flex-end; justify-content: center; touch-action: none; }
-    .rv-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 430px; padding: 18px 18px env(safe-area-inset-bottom,24px); max-height: 92dvh; overflow-y: auto; }
+    .rv-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 430px; padding: 18px 18px 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; }
     .rv-sheet-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .rv-sheet-hdr h3 { font-size: 16px; font-weight: 800; margin: 0; }
     .rv-sheet-close { background: none; border: none; color: var(--text3); font-size: 22px; cursor: pointer; padding: 0 2px; line-height: 1; }
@@ -254,7 +256,7 @@
     .rv-stars-pick span.full { color: #F5A623; }
     .rv-stars-pick span.half { background: linear-gradient(to right, #F5A623 50%, #d0d0d0 50%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; }
     .rv-rating-hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
-    .rv-submit { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
+    .rv-submit { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; display: block; }
     .rv-submit:disabled { opacity: .6; cursor: default; }
     /* 후기 댓글 화면 */
     .rv-det-modal { position: fixed; inset: 0; z-index: 960; background: var(--bg); display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
@@ -1019,11 +1021,11 @@ document.getElementById('app').addEventListener('touchstart', e => {
 document.getElementById('app').addEventListener('touchmove', e => {
   if (!ptrPulling || ptrRefreshing || e.touches.length !== 1) return;
   const active = activeScreenEl();
-  if (!active || active.scrollTop > 2) { ptrPulling = false; return; }
+  if (!active || active.scrollTop > 2) { ptrPulling = false; setPullRefresh(false); return; }
   const dx = Math.abs(e.touches[0].clientX - ptrStartX);
   const dy = e.touches[0].clientY - ptrStartY;
   if (dx > 28 || dy < 0) { ptrPulling = false; setPullRefresh(false); return; }
-  if (dy > 64) setPullRefresh(true, '놓으면 새로고침');
+  if (dy > 40) setPullRefresh(true, dy > 60 ? '놓으면 새로고침' : '당겨서 새로고침');
 }, { passive: true });
 
 document.getElementById('app').addEventListener('touchend', e => {
@@ -1031,7 +1033,7 @@ document.getElementById('app').addEventListener('touchend', e => {
   ptrPulling = false;
   const dx = Math.abs((e.changedTouches[0]?.clientX || 0) - ptrStartX);
   const dy = (e.changedTouches[0]?.clientY || 0) - ptrStartY;
-  if (dy > 88 && dx < 28) refreshActiveScreen();
+  if (dy > 72 && dx < 28) refreshActiveScreen();
   else setPullRefresh(false);
 }, { passive: true });
 
@@ -1567,6 +1569,7 @@ async function startApp() {
 let cachedItems = [];
 let likedItemIds = new Set();
 let likedItemIdsReady = false;
+let titleToSellerMap = {};  // 상품 제목 → 판매자 닉네임 (후기에서 판매자 표시용)
 
 async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
@@ -1603,7 +1606,8 @@ async function renderMain(q) {
   <div class="stat-tabs">
     ${stats.map(s => `<div class="stab${statF === s ? ' on' : ''}" data-stat="${s}" onclick="selectStatus('${s}')">${s}</div>`).join('')}
   </div>
-  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
+  <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>
+  <div class="footer-credit">Made by 윤듬듬🐢</div>`;
 
   if (statF === '후기') {
     renderReviews();
@@ -1679,9 +1683,17 @@ function renderMainList(q, shouldPrefetch = true) {
     grid.innerHTML = '<div class="loading"><div class="spin"></div> 불러오는 중...</div>';
     return;
   }
-  grid.innerHTML = list.length
-    ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
-    : '';
+  if (list.length) {
+    grid.innerHTML = list.map(i => cardH(i, likedItemIds.has(i.id))).join('');
+  } else {
+    let emptyMsg;
+    if (q) emptyMsg = `"${q}" 검색 결과가 없어요`;
+    else if (catF !== '전체') emptyMsg = `${catF} 카테고리에 상품이 없어요 🙂`;
+    else if (statF === '판매중') emptyMsg = '판매 중인 상품이 없어요';
+    else if (statF === '판매완료') emptyMsg = '판매 완료된 상품이 없어요';
+    else emptyMsg = '상품이 없어요';
+    grid.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+  }
   if (shouldPrefetch) prefetchSoon(q);
 }
 
@@ -1784,9 +1796,10 @@ async function renderReviews() {
   const cmtMap = {};
   cmts.forEach(c => { cmtMap[c.review_id] = (cmtMap[c.review_id] || 0) + 1; });
 
-  // 상품 제목 → 판매자 닉네임 맵
+  // 상품 제목 → 판매자 닉네임 맵 (모듈 레벨 변수에도 저장해서 후기 상세에서도 사용)
   const titleToSeller = {};
   (itemsResp.data || []).forEach(i => { if (i.title) titleToSeller[i.title] = i.seller_name; });
+  Object.assign(titleToSellerMap, titleToSeller);
 
   const feed = document.querySelector('#s-main .review-feed');
   if (!feed) return;
@@ -1897,7 +1910,7 @@ async function openReviewDetail(reviewId) {
       <div class="loading" style="padding:30px 0;text-align:center"><div class="spin"></div> 불러오는 중...</div>
     </div>
     <div class="rv-cmt-bar">
-      <textarea id="_rvCmtInput" placeholder="댓글을 남겨주세요" maxlength="300" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();submitRvComment('${reviewId}')}"></textarea>
+      <textarea id="_rvCmtInput" placeholder="댓글을 남겨주세요" maxlength="300" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!('ontouchstart' in document)){event.preventDefault();submitRvComment('${reviewId}')}"></textarea>
       <button class="rv-cmt-send" onclick="submitRvComment('${reviewId}')">전송</button>
     </div>`;
   document.body.appendChild(modal);
@@ -1930,7 +1943,7 @@ async function openReviewDetail(reviewId) {
             <span class="rv-time">${relTime(r.created_at)}</span>
           </div>
         </div>
-        ${r.item_title ? `<div class="rv-item-tag">🛍️ ${esc(r.item_title)}</div>` : ''}
+        ${r.item_title ? `<div class="rv-item-tag">🛍️ ${esc(r.item_title)}${titleToSellerMap[r.item_title] ? ` · ${esc(titleToSellerMap[r.item_title])}` : ''}</div>` : ''}
         <div class="rv-stars-disp" style="margin:5px 0">${renderStarsHtml(r.rating || 0)}</div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6">${esc(r.content)}</div>
       </div>
@@ -2079,7 +2092,7 @@ async function openReviewForm(editReview = null) {
         <div id="_rvPhotoZone" class="img-zone" onclick="document.getElementById('_rvFile').click()">
           <i class="ti ti-camera" style="font-size:20px;"></i> 사진을 올려주세요
         </div>
-        <input type="file" id="_rvFile" accept="image/*" style="display:none" onchange="handleRvPhoto(this)">
+        <input type="file" id="_rvFile" accept="image/*" multiple style="display:none" onchange="handleRvPhoto(this)">
       </div>
       <div class="fr">
         <label>후기 내용 *</label>
@@ -2137,18 +2150,20 @@ function renderRvStarPicker() {
 
 /* ── 사진 처리 ── */
 async function handleRvPhoto(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  try {
-    const dataUrl = await readItemImage(file, 1400, 0.85);
-    if (dataUrl) {
-      rvPhotos.push(dataUrl);
-      renderRvPhotoPreviews();
+  const files = Array.from(input.files || []);
+  if (!files.length) return;
+  let failed = 0;
+  for (const file of files) {
+    try {
+      const dataUrl = await readItemImage(file, 1400, 0.85);
+      if (dataUrl) rvPhotos.push(dataUrl);
+    } catch (e) {
+      console.error('사진 처리 실패', e);
+      failed++;
     }
-  } catch (e) {
-    console.error('사진 처리 실패', e);
-    toast('사진을 처리하지 못했어요');
   }
+  if (failed) toast(`사진 ${failed}장을 처리하지 못했어요`);
+  renderRvPhotoPreviews();
   input.value = '';
 }
 
@@ -2303,7 +2318,7 @@ function renderDetLoading(it) {
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
-        <textarea class="cmt-inp" id="_dci" placeholder="댓글을 남겨 보세요" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doAddCmt()}"></textarea>
+        <textarea class="cmt-inp" id="_dci" placeholder="댓글을 남겨 보세요" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!('ontouchstart' in document)){event.preventDefault();doAddCmt()}"></textarea>
         <button class="cmt-post" onclick="doAddCmt()">등록</button>
       </div>
       <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
@@ -2347,7 +2362,7 @@ function renderDet() {
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
-        <textarea class="cmt-inp" id="_dci" placeholder="댓글을 남겨 보세요" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doAddCmt()}"></textarea>
+        <textarea class="cmt-inp" id="_dci" placeholder="댓글을 남겨 보세요" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!('ontouchstart' in document)){event.preventDefault();doAddCmt()}"></textarea>
         <button class="cmt-post" onclick="doAddCmt()">등록</button>
       </div>
       <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
@@ -2434,7 +2449,7 @@ function cmtHTML(c, reps) {
 	                  <button class="ca" onclick="doDelCmt('${c.id}')">삭제</button>` : ''}
     </div>
     <div id="rep-form-${c.id}" style="display:none;" class="rep-form">
-      <textarea class="rep-inp" id="ri-${c.id}" placeholder="답글 입력" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doAddRep('${c.id}')}"></textarea>
+      <textarea class="rep-inp" id="ri-${c.id}" placeholder="답글 입력" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!('ontouchstart' in document)){event.preventDefault();doAddRep('${c.id}')}"></textarea>
       <button class="rep-post" onclick="doAddRep('${c.id}')">등록</button>
     </div>
     ${reps.length ? `<div class="replies">${reps.map(r => repHTML(r)).join('')}</div>` : ''}
@@ -2473,7 +2488,7 @@ function startEditCmt(id) {
   if (!txtEl) return;
   const oldText = commentTextMap.get(id) || '';
   txtEl.innerHTML = `<div style="display:flex;gap:5px;margin-top:4px;align-items:flex-start;">
-    <textarea class="rep-inp" id="edit-inp-${id}" rows="1" style="flex:1;" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doSaveCmt('${id}')}">${esc(oldText)}</textarea>
+    <textarea class="rep-inp" id="edit-inp-${id}" rows="1" style="flex:1;" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!('ontouchstart' in document)){event.preventDefault();doSaveCmt('${id}')}">${esc(oldText)}</textarea>
     <button class="rep-post" onclick="doSaveCmt('${id}')">저장</button>
     <button class="ca" onclick="renderComments(curId, commentCache.get(curId) || [])">취소</button>
   </div>`;
