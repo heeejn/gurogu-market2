@@ -125,10 +125,10 @@
     /* ─── 댓글 ─── */
     .cmt-wrap { border-top: .5px solid var(--br); padding-top: 13px; }
     .cmt-head { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
-    .cmt-form { display: flex; gap: 6px; margin-bottom: 11px; }
-    .cmt-inp { flex: 1; height: 38px; border: .5px solid var(--br2); border-radius: 10px; padding: 0 12px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg); }
+    .cmt-form { display: flex; gap: 6px; margin-bottom: 11px; align-items: flex-start; }
+    .cmt-inp { flex: 1; min-height: 38px; max-height: 120px; border: .5px solid var(--br2); border-radius: 10px; padding: 8px 12px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg); resize: none; overflow-y: auto; line-height: 1.4; }
     .cmt-inp:focus { outline: none; border-color: var(--pink); }
-    .cmt-post { background: var(--pink-bg); color: var(--pink-dark); border: .5px solid var(--pink-br); border-radius: 10px; padding: 0 13px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .cmt-post { background: var(--pink-bg); color: var(--pink-dark); border: .5px solid var(--pink-br); border-radius: 10px; padding: 0 13px; height: 38px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
     .cmt-list { display: flex; flex-direction: column; gap: 7px; }
     .cmt-item { background: var(--bg); border-radius: 10px; padding: 9px 11px; border: .5px solid var(--br); }
     .cmt-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
@@ -141,14 +141,14 @@
     .cmt-acts { display: flex; gap: 8px; }
     .ca { background: none; border: none; font-size: 11px; color: var(--text3); cursor: pointer; padding: 0; font-family: inherit; font-weight: 700; }
     .ca:active { color: var(--pink-dark); }
-    .rep-form { display: flex; gap: 5px; margin-top: 8px; }
-    .rep-inp { flex: 1; height: 32px; border: .5px solid var(--br2); border-radius: 8px; padding: 0 10px; font-size: 12px; font-family: inherit; color: var(--text); background: var(--surface); }
+    .rep-form { display: flex; gap: 5px; margin-top: 8px; align-items: flex-start; }
+    .rep-inp { flex: 1; min-height: 32px; max-height: 96px; border: .5px solid var(--br2); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-family: inherit; color: var(--text); background: var(--surface); resize: none; overflow-y: auto; line-height: 1.4; }
     .rep-inp:focus { outline: none; border-color: var(--teal); }
-    .rep-post { background: var(--teal-bg); color: var(--teal-dark); border: .5px solid var(--teal-br); border-radius: 8px; padding: 0 11px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .rep-post { background: var(--teal-bg); color: var(--teal-dark); border: .5px solid var(--teal-br); border-radius: 8px; padding: 0 11px; height: 32px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
     .replies { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
     .rep-item { background: var(--surface); border-radius: 8px; padding: 7px 10px; border: .5px solid var(--br); margin-left: 12px; }
     .rep-nick { font-size: 11px; font-weight: 800; color: var(--teal-dark); }
-    .rep-text { font-size: 12px; margin-top: 2px; }
+    .rep-text { font-size: 12px; margin-top: 2px; line-height: 1.6; }
     .rep-acts { display: flex; gap: 6px; margin-top: 4px; }
     .ei { width: 100%; height: 28px; border: .5px solid var(--br2); border-radius: 6px; padding: 0 9px; font-size: 12px; font-family: inherit; color: var(--text); margin-bottom: 4px; background: var(--surface); }
 
@@ -213,6 +213,73 @@
     .photo-nav.hide { display: none; }
     .photo-count { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 10; color: #fff; background: rgba(255,255,255,.14); border: .5px solid rgba(255,255,255,.22); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 800; pointer-events: none; }
 
+    /* ─── 구매 후기 피드 (2열 그리드) ─── */
+    .review-feed { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+    .rv-write-btn { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; background: var(--pink-bg); color: var(--pink-dark); border: .5px solid var(--pink-br); border-radius: 10px; padding: 11px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+    .rv-card { background: var(--surface); border: .5px solid var(--br); border-radius: 10px; overflow: hidden; }
+    /* 사진 캐러셀 */
+    .rv-photos-strip { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--bg); }
+    .rv-photos-slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; aspect-ratio: 1; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .rv-photos-slides::-webkit-scrollbar { display: none; }
+    .rv-photo-s { flex: 0 0 100%; scroll-snap-align: start; aspect-ratio: 1; cursor: pointer; }
+    .rv-photo-s img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .rv-photo-counter { position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 10px; font-weight: 800; border-radius: 8px; padding: 2px 6px; pointer-events: none; }
+    /* 카드 바디 (컴팩트) */
+    .rv-body { padding: 7px 8px 9px; }
+    .rv-top { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+    .rv-top-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .rv-av { width: 22px; height: 22px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: var(--pur); }
+    .rv-av img { width: 100%; height: 100%; object-fit: cover; }
+    .rv-name { font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rv-time { font-size: 9px; color: var(--text3); }
+    .rv-more-btn { background: none; border: none; color: var(--text3); font-size: 15px; cursor: pointer; padding: 1px 2px; font-family: inherit; line-height: 1; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .rv-item-tag { font-size: 10px; font-weight: 700; color: var(--pur-dark); background: var(--pur-bg); border: .5px solid var(--pur-br); border-radius: 999px; padding: 2px 6px; display: inline-block; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .rv-stars-disp { font-size: 12px; letter-spacing: 0; margin-bottom: 3px; }
+    .rv-star { display: inline-block; color: #d0d0d0; }
+    .rv-star.full { color: #F5A623; }
+    .rv-star.half { background: linear-gradient(to right, #F5A623 50%, #d0d0d0 50%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; }
+    .rv-text { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 7px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; word-break: break-all; }
+    .rv-actions { display: flex; align-items: center; gap: 10px; }
+    .rv-act-btn { background: none; border: none; color: var(--text3); font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 3px; padding: 0; -webkit-tap-highlight-color: transparent; }
+    .rv-act-btn.liked { color: #E53935; }
+    .rv-empty { grid-column: 1 / -1; text-align: center; padding: 48px 0 20px; color: var(--text3); font-size: 13px; font-weight: 700; line-height: 2.5; }
+    /* 후기 작성/수정 모달 */
+    .rv-modal { position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,.46); display: flex; align-items: flex-end; justify-content: center; touch-action: none; }
+    .rv-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 430px; padding: 18px 18px env(safe-area-inset-bottom,24px); max-height: 92dvh; overflow-y: auto; }
+    .rv-sheet-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .rv-sheet-hdr h3 { font-size: 16px; font-weight: 800; margin: 0; }
+    .rv-sheet-close { background: none; border: none; color: var(--text3); font-size: 22px; cursor: pointer; padding: 0 2px; line-height: 1; }
+    .rv-stars-pick { display: flex; gap: 6px; font-size: 34px; cursor: pointer; margin-bottom: 4px; user-select: none; -webkit-user-select: none; touch-action: none; }
+    .rv-stars-pick span { color: #d0d0d0; line-height: 1; }
+    .rv-stars-pick span.full { color: #F5A623; }
+    .rv-stars-pick span.half { background: linear-gradient(to right, #F5A623 50%, #d0d0d0 50%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: transparent; }
+    .rv-rating-hint { font-size: 11px; color: var(--text3); margin-top: 2px; }
+    .rv-submit { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
+    .rv-submit:disabled { opacity: .6; cursor: default; }
+    /* 후기 댓글 화면 */
+    .rv-det-modal { position: fixed; inset: 0; z-index: 960; background: var(--bg); display: flex; flex-direction: column; max-width: 430px; margin: 0 auto; }
+    .rv-det-hdr { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: .5px solid var(--br); flex-shrink: 0; }
+    .rv-det-hdr h3 { font-size: 15px; font-weight: 800; margin: 0; flex: 1; }
+    .rv-det-body { flex: 1; overflow-y: auto; }
+    .rv-det-review { padding: 14px; border-bottom: .5px solid var(--br); }
+    .rv-det-comments { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+    .rv-cmt-item { display: flex; gap: 8px; }
+    .rv-cmt-av { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--pur-bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: var(--pur); }
+    .rv-cmt-av img { width: 100%; height: 100%; object-fit: cover; }
+    .rv-cmt-bubble { background: var(--surface); border: .5px solid var(--br); border-radius: 12px; padding: 8px 11px; flex: 1; }
+    .rv-cmt-name { font-size: 11px; font-weight: 800; margin-bottom: 3px; }
+    .rv-cmt-text { font-size: 13px; color: var(--text2); line-height: 1.5; word-break: break-all; }
+    .rv-cmt-time { font-size: 10px; color: var(--text3); margin-top: 4px; }
+    .rv-cmt-bar { display: flex; gap: 8px; padding: 10px 14px env(safe-area-inset-bottom,14px); border-top: .5px solid var(--br); flex-shrink: 0; align-items: flex-end; }
+    .rv-cmt-bar textarea { flex: 1; min-height: 38px; max-height: 100px; border: .5px solid var(--br2); border-radius: 14px; padding: 9px 14px; font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; resize: none; overflow-y: auto; line-height: 1.4; }
+    .rv-cmt-bar textarea:focus { outline: none; border-color: var(--pink); }
+    .rv-cmt-send { background: var(--pink); color: #fff; border: none; border-radius: 20px; padding: 9px 14px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    /* 후기 메뉴 */
+    .rv-menu { position: fixed; z-index: 1100; background: var(--surface); border: .5px solid var(--br); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.18); overflow: hidden; min-width: 130px; }
+    .rv-menu-item { padding: 13px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; background: none; border: none; width: 100%; text-align: left; color: var(--text); }
+    .rv-menu-item:hover { background: var(--bg); }
+    .rv-menu-item.danger { color: #E53935; }
+
     /* ─── 판매 등록 ─── */
     .sell-body { padding: 14px; }
     .fr { margin-bottom: 10px; }
@@ -229,6 +296,10 @@
     .photo-add { width: 112px; aspect-ratio: 1; border: 1px dashed var(--br2); border-radius: 10px; background: var(--bg); color: var(--text3); flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; font-weight: 700; cursor: pointer; }
     .reg-btn { width: 100%; background: var(--pink); color: #fff; border: none; border-radius: 10px; height: 46px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; margin-top: 8px; }
     .reg-btn:active { background: var(--pink-dark); }
+    .nanoom-row { display: flex; align-items: center; gap: 8px; padding: 2px 0 6px; }
+    .nanoom-row input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; flex-shrink: 0; margin: 0; }
+    .nanoom-row span { font-size: 13px; font-weight: 700; color: var(--teal-dark); cursor: pointer; }
+    .price-nanoom { color: var(--teal-dark); font-weight: 800; }
 
     /* ─── 닉네임 설정 ─── */
     .nick-screen { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px 14px; }
@@ -293,13 +364,15 @@ let myN = localStorage.getItem('gurogu_nickname') || '';
 let myP = localStorage.getItem('gurogu_profile_photo') || '';
 let itemPhotos = [];
 let itemThumbs = [];
-let catF = '전체', statF = '판매중';
+let catF = localStorage.getItem('gurogu_catF') || '전체';
+let statF = localStorage.getItem('gurogu_statF') || '판매중';
 let curId = null, myTab = 'selling';
 let screenHistory = ['s-nick'];
 const PHOTO_CACHE_PREFIX = 'gurogu_item_thumb_';
 const COMMENT_CACHE_PREFIX = 'gurogu_item_comments_';
 const NOTI_KEY_PREFIX = 'gurogu_notifications_';
 const NOTI_SEEN_PREFIX = 'gurogu_engagement_seen_';
+const NOTI_DELETED_PREFIX = 'gurogu_deleted_noti_keys_';
 const hydratingPhotoIds = new Set();
 const hydratedPhotoIds = new Set();
 const photoHydrationPromises = new Map();
@@ -456,20 +529,12 @@ function esc(v) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[m]));
 }
-function normalizeText(v) {
-  return String(v ?? '').replace(/[…⋯]/g, '...').replace(/···/g, '...');
+function escLines(v) {
+  return esc(v).replace(/\n/g, '<br>');
 }
-function normalizeSmartDotsInput(el) {
-  if (!el || typeof el.value !== 'string') return;
-  const next = normalizeText(el.value);
-  if (next === el.value) return;
-  const start = el.selectionStart;
-  const end = el.selectionEnd;
-  el.value = next;
-  if (start != null && end != null) {
-    const pos = Math.min(next.length, start + 2);
-    el.setSelectionRange(pos, pos);
-  }
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 function saveProfile() {
   if (myN) localStorage.setItem('gurogu_nickname', myN);
@@ -583,7 +648,7 @@ function installPhotoZoomGestures(modal, img) {
       const newMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const newMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       const newZ = Math.max(1, Math.min(5, photoPinchStartZoom * (dist / photoPinchStartDist)));
-      // Midpoint compensation: anchor point under initial midpoint stays fixed + translate
+      // 핀치 중심점 보정: 두 손가락 사이 지점이 확대 전후 같은 위치 유지
       const CX = window.innerWidth / 2;
       const CY = window.innerHeight / 2;
       const anchorX = photoPinchMidX - CX;
@@ -602,14 +667,13 @@ function installPhotoZoomGestures(modal, img) {
         photoIsDragging = true;
         setPhotoZoom(photoZoomLevel, photoDragStartPanX + dx, photoDragStartPanY + dy);
       } else if (dy > 8 && Math.abs(dy) > Math.abs(dx)) {
-        e.preventDefault(); // prevent scroll-behind when swiping down to close
+        e.preventDefault();
       }
     }
   }, { passive: false });
 
   modal.addEventListener('touchend', e => {
     if (e.touches.length > 0) {
-      // One finger left after releasing from pinch — reset drag anchor
       if (photoPinching && e.touches.length === 1) {
         photoPinching = false;
         photoPinchStartDist = 0;
@@ -628,26 +692,16 @@ function installPhotoZoomGestures(modal, img) {
       photoLastTap = 0;
       return;
     }
-    if (photoIsDragging) {
-      photoIsDragging = false;
-      return;
-    }
+    if (photoIsDragging) { photoIsDragging = false; return; }
     const now = Date.now();
     const dx = e.changedTouches[0].clientX - photoDragStartX;
     const dy = e.changedTouches[0].clientY - photoDragStartY;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
     if (photoZoomLevel <= 1) {
-      // Swipe down to close
       if (dy > 80 && absDy > absDx) { closePhotoModal(); return; }
-      // Horizontal swipe to navigate
-      if (absDx > 50 && absDx > absDy * 1.2) {
-        movePhoto(dx < 0 ? 1 : -1);
-        photoLastTap = 0;
-        return;
-      }
+      if (absDx > 50 && absDx > absDy * 1.2) { movePhoto(dx < 0 ? 1 : -1); photoLastTap = 0; return; }
     }
-    // Double tap to zoom
     if (absDx < 20 && absDy < 20) {
       if (now - photoLastTap < 300) {
         if (photoZoomLevel > 1) {
@@ -661,9 +715,7 @@ function installPhotoZoomGestures(modal, img) {
           setPhotoZoom(newZ, (tapX - CX) * (1 - newZ), (tapY - CY) * (1 - newZ));
         }
         photoLastTap = 0;
-      } else {
-        photoLastTap = now;
-      }
+      } else { photoLastTap = now; }
     }
   }, { passive: false });
 }
@@ -694,9 +746,7 @@ function setPhotoZoom(z, px, py) {
   if (!photoBaseH) photoBaseH = img.offsetHeight || window.innerHeight * 0.88;
   photoZoomLevel = Math.max(1, Math.min(5, z));
   if (photoZoomLevel <= 1) {
-    photoZoomLevel = 1;
-    photoPanX = 0;
-    photoPanY = 0;
+    photoZoomLevel = 1; photoPanX = 0; photoPanY = 0;
   } else {
     const maxPanX = Math.max(0, (photoBaseW * photoZoomLevel - window.innerWidth) / 2);
     const maxPanY = Math.max(0, (photoBaseH * photoZoomLevel - window.innerHeight) / 2);
@@ -712,12 +762,9 @@ function closePhotoModal() {
   photoPanX = 0; photoPanY = 0;
   photoBaseW = 0; photoBaseH = 0;
   photoLastTap = 0;
-  photoPinchStartDist = 0;
-  photoPinchStartZoom = 1;
-  photoPinching = false;
-  photoIsDragging = false;
-  photoModalPhotos = [];
-  photoModalIndex = 0;
+  photoPinchStartDist = 0; photoPinchStartZoom = 1;
+  photoPinching = false; photoIsDragging = false;
+  photoModalPhotos = []; photoModalIndex = 0;
 }
 
 /* ── 화면 전환 ── */
@@ -800,6 +847,22 @@ function notificationKey() {
 function seenKey() {
   return NOTI_SEEN_PREFIX + (myN || userKey);
 }
+function deletedNotiKeysKey() {
+  return NOTI_DELETED_PREFIX + (myN || userKey);
+}
+function loadDeletedNotiKeys() {
+  try { return new Set(JSON.parse(localStorage.getItem(deletedNotiKeysKey()) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function saveDeletedNotiKey(key) {
+  if (!key) return;
+  try {
+    const keys = loadDeletedNotiKeys();
+    keys.add(key);
+    const arr = Array.from(keys).slice(-300);
+    localStorage.setItem(deletedNotiKeysKey(), JSON.stringify(arr));
+  } catch (e) { console.warn('삭제 알림 키 저장 실패', e); }
+}
 function loadNotifications() {
   try { return JSON.parse(localStorage.getItem(notificationKey()) || '[]'); }
   catch (e) { return []; }
@@ -830,7 +893,8 @@ function addNotifications(items) {
   if (!items.length) return;
   const old = loadNotifications();
   const known = new Set(old.map(n => n.key));
-  const fresh = items.filter(n => !known.has(n.key)).map(n => ({
+  const deleted = loadDeletedNotiKeys();
+  const fresh = items.filter(n => !known.has(n.key) && !deleted.has(n.key)).map(n => ({
     ...n,
     id: crypto.randomUUID(),
     read: false,
@@ -888,13 +952,20 @@ async function pollNotifications(silent = true) {
   const prevSeen = loadSeenEngagement();
   const firstRun = !prevSeen;
   const newNotis = [];
-  nextSeen._replies = replyComments.map(c => c.id);
+  // 답글 쿼리 실패 시 이전 기준 유지 (실패로 인한 재알림 방지)
+  nextSeen._replies = allCommentsRes.error
+    ? ((prevSeen && prevSeen._replies) || [])
+    : replyComments.map(c => c.id);
   ids.forEach(id => {
     const itemComments = commentsByItem.get(id) || [];
     const visibleComments = itemComments.filter(c => c.author_name !== myN);
+    // 댓글 쿼리 실패 시 이전 기준 유지 (실패로 인한 재알림 방지)
+    const commentIds = commentsRes.error
+      ? ((prevSeen && prevSeen[id] && prevSeen[id].comments) || [])
+      : visibleComments.map(c => c.id);
     nextSeen[id] = {
       likes: likes.get(id) || 0,
-      comments: visibleComments.map(c => c.id),
+      comments: commentIds,
     };
     if (firstRun) return;
 
@@ -963,10 +1034,6 @@ document.getElementById('app').addEventListener('touchend', e => {
   if (dy > 88 && dx < 28) refreshActiveScreen();
   else setPullRefresh(false);
 }, { passive: true });
-
-document.addEventListener('input', e => {
-  if (e.target.matches('input[type="text"], textarea')) normalizeSmartDotsInput(e.target);
-});
 
 /* ── 파일 업로드 → Base64 ── */
 function readFile(file) {
@@ -1099,7 +1166,8 @@ async function restRows(path, ms = 6000) {
 
 async function fetchItems() {
   const columnSets = [
-    'id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url',
+    'id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls',
+    'id,title,price,category,description,seller_name,sold,created_at,thumbnail_url,photo_urls',
     'id,title,price,category,description,seller_name,sold,created_at,thumbnail_url',
     'id,title,price,category,description,seller_name,sold,created_at',
   ];
@@ -1107,27 +1175,27 @@ async function fetchItems() {
   let error = null;
 
   for (const columns of columnSets) {
-    const res = await restRows(`items?select=${encodeURIComponent(columns)}&limit=200`);
+    const res = await restRows(`items?select=${encodeURIComponent(columns)}&limit=200`, 20000);
     data = res.data;
     error = res.error;
     if (!error) break;
-    if (error.name === 'AbortError') continue;
+    if (error.name === 'AbortError') break; // 네트워크 타임아웃 → 더 단순한 컬럼셋 재시도 의미 없음
     if (error.code !== '42703') break;
     console.warn('일부 컬럼이 없어 더 기본 형태로 상품을 불러옵니다.', error);
   }
 
   if (error) { console.error(JSON.stringify(error)); return null; }
-	  return data
-      .filter(i => i.description !== DELETED_MARK)
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-      .map(i => ({
-	    ...i,
-	    emoji: itemRecordPayload(i) || i.emoji || cachedThumbPayload(i.id),
-	    seller_photo: i.seller_photo || '',
-    likeCount: i.likeCount || 0,
-    commentCount: i.commentCount || 0,
-	  }));
-	}
+  return data
+    .filter(i => i.description !== DELETED_MARK)
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .map(i => ({
+      ...i,
+      emoji: itemRecordPayload(i) || i.emoji || cachedThumbPayload(i.id),
+      seller_photo: i.seller_photo || '',
+      likeCount: i.likeCount || 0,
+      commentCount: i.commentCount || 0,
+    }));
+}
 
 function withTimeout(promise, ms, fallback = null) {
   return Promise.race([
@@ -1484,7 +1552,7 @@ function renderNick() {
 }
 
 async function startApp() {
-  const v = normalizeText(document.getElementById('_ni').value).trim();
+  const v = document.getElementById('_ni').value.trim();
   if (!v) { toast('닉네임을 입력해 주세요'); return; }
   myN = v;
   saveProfile();
@@ -1504,7 +1572,7 @@ async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
   const cats = ['전체', '의류', '전자기기', '도서', '생활용품', '취미', '식물', '기타'];
   const cEm = { 의류:'👗', 전자기기:'📱', 도서:'📚', 생활용품:'🏠', 취미:'🎮', 식물:'🌿', 기타:'📦' };
-  const stats = ['판매중', '판매완료', '전체'];
+  const stats = ['판매중', '판매완료', '후기'];
 
   document.getElementById('s-main').innerHTML = `
   <div class="hdr">
@@ -1537,28 +1605,43 @@ async function renderMain(q) {
   </div>
   <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>`;
 
-  if (cachedItems.length) renderMainList(q, false);
+  if (statF === '후기') {
+    renderReviews();
+  } else {
+    if (cachedItems.length) renderMainList(q, false);
+  }
 
   updateNotificationBadge();
-  const itemFetch = fetchItems();
-  const items = await withTimeout(itemFetch, 15000, null);
-  if (items) cachedItems = mergeFetchedItems(items);
-  else toast('상품을 불러오지 못해서 기존 목록을 유지했어요');
-  renderMainList(q, false);
-  hydrateMainMeta(q);
-  pollNotifications();
-  if (!items) {
-    itemFetch.then(lateItems => {
-      if (!lateItems) return;
-      cachedItems = mergeFetchedItems(lateItems);
-      renderMainList(document.getElementById('_sq')?.value || '', false);
-      hydrateMainMeta(document.getElementById('_sq')?.value || '');
-    });
+
+  // 탭과 관계없이 항상 아이템 패치 (후기 탭 → 판매중 전환 시 빈 화면 방지)
+  {
+    let items = await fetchItems();
+
+    if (!items) {
+      // 첫 시도 실패 → 2초 후 1회 자동 재시도
+      const grid = document.querySelector('#s-main .grid');
+      if (grid && !cachedItems.length) {
+        grid.innerHTML = '<div class="loading"><div class="spin"></div> 다시 시도 중...</div>';
+      }
+      await new Promise(r => setTimeout(r, 2000));
+      items = await fetchItems();
+    }
+
+    if (items) cachedItems = mergeFetchedItems(items);
+    // fetch 완료 후 현재 탭이 판매중/판매완료면 렌더 (탭 전환 후 완료되는 경우 포함)
+    if (statF !== '후기') {
+      renderMainList(q, false);
+      if (items) hydrateMainMeta(q);
+    }
   }
+
+  // 아이템 로드 완료 후 알림 폴링 (fetchItems와 네트워크 경쟁 방지)
+  pollNotifications();
 }
 
 function selectCategory(category) {
   catF = category;
+  try { localStorage.setItem('gurogu_catF', category); } catch (e) {}
   document.querySelectorAll('#s-main .chip').forEach(chip => {
     chip.classList.toggle('on', chip.dataset.cat === category);
   });
@@ -1567,22 +1650,38 @@ function selectCategory(category) {
 
 function selectStatus(status) {
   statF = status;
+  try { localStorage.setItem('gurogu_statF', status); } catch (e) {}
   document.querySelectorAll('#s-main .stab').forEach(tab => {
     tab.classList.toggle('on', tab.dataset.stat === status);
   });
-  renderMainList(document.getElementById('_sq')?.value || '');
+  if (status === '후기') {
+    renderReviews();
+  } else {
+    const content = document.querySelector('#s-main .content');
+    if (content && !content.querySelector('.grid')) {
+      // 후기 탭에서 전환 시 그리드가 없음 — 스피너로 채워두고 renderMainList 호출
+      content.innerHTML = '<div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div>';
+    }
+    renderMainList(document.getElementById('_sq')?.value || '');
+  }
 }
 
 function renderMainList(q, shouldPrefetch = true) {
+  if (statF === '후기') return;
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
 
   let list = filterMainItems(q);
 
   const grid = document.querySelector('#s-main .grid');
   if (!grid) return;
+  if (!cachedItems.length) {
+    // 아직 데이터 로딩 중 — 스피너 유지 (백그라운드 fetch 완료 시 자동 re-render)
+    grid.innerHTML = '<div class="loading"><div class="spin"></div> 불러오는 중...</div>';
+    return;
+  }
   grid.innerHTML = list.length
     ? list.map(i => cardH(i, likedItemIds.has(i.id))).join('')
-    : `<div class="empty">조건에 맞는 상품이 없어요 🥲</div>`;
+    : '';
   if (shouldPrefetch) prefetchSoon(q);
 }
 
@@ -1611,7 +1710,7 @@ function cardH(i, liked) {
     <div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>
     <div class="card-body">
       <div class="card-name">${esc(i.title)}</div>
-      <div class="card-price">${i.price.toLocaleString()}원</div>
+      <div class="card-price${i.price === 0 ? ' price-nanoom' : ''}">${i.price === 0 ? '나눔 💚' : i.price.toLocaleString()+'원'}</div>
       <div class="card-sub">
       <div class="card-sub-l"><div class="mini-av">${av(p, i.seller_name, 13)}</div><span>${esc(i.seller_name)}</span></div>
         <div class="card-sub-r">
@@ -1637,6 +1736,498 @@ async function doToggleLike(itemId, btn) {
   if (curItem?.id === itemId) curItem.likeCount = Math.max(0, (curItem.likeCount || 0) + (liked ? 1 : -1));
   btn.textContent = liked ? '❤️' : '🤍';
   toast(liked ? '❤️ 찜했어요!' : '찜 해제했어요');
+}
+
+/* ════════════════════════════════
+   구매 후기
+════════════════════════════════ */
+let rvRating = 0;
+let rvPhotos = [];        // 새로 추가할 사진 data URL 배열
+let rvExistingPhotos = []; // 수정 시 기존 사진 URL 배열
+let rvSoldItems = [];
+let rvEditId = null;       // 수정 중인 리뷰 id (null = 신규)
+
+/* ── 별점 렌더링 (카드용) ── */
+function renderStarsHtml(rating) {
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    if (rating >= i) html += '<span class="rv-star full">★</span>';
+    else if (rating >= i - 0.5) html += '<span class="rv-star half">★</span>';
+    else html += '<span class="rv-star">★</span>';
+  }
+  return html;
+}
+
+/* ── 피드 렌더링 ── */
+async function renderReviews() {
+  const content = document.querySelector('#s-main .content');
+  if (!content) return;
+  content.innerHTML = `<div class="review-feed">
+    <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+    <div class="loading"><div class="spin"></div> 불러오는 중...</div>
+  </div>`;
+
+  const [rvResp, likesResp, cmtsResp, itemsResp] = await Promise.all([
+    sb.from('reviews').select('*').order('created_at', { ascending: false }),
+    sb.from('review_likes').select('review_id,user_name'),
+    sb.from('review_comments').select('review_id'),
+    sb.from('items').select('title,seller_name'),
+  ]);
+
+  const reviews = rvResp.data || [];
+  const likes   = likesResp.data || [];
+  const cmts    = cmtsResp.data || [];
+
+  const likeMap = {};
+  likes.forEach(l => { likeMap[l.review_id] = (likeMap[l.review_id] || 0) + 1; });
+  const myLikedSet = new Set(likes.filter(l => l.user_name === myN).map(l => l.review_id));
+  const cmtMap = {};
+  cmts.forEach(c => { cmtMap[c.review_id] = (cmtMap[c.review_id] || 0) + 1; });
+
+  // 상품 제목 → 판매자 닉네임 맵
+  const titleToSeller = {};
+  (itemsResp.data || []).forEach(i => { if (i.title) titleToSeller[i.title] = i.seller_name; });
+
+  const feed = document.querySelector('#s-main .review-feed');
+  if (!feed) return;
+  if (rvResp.error || !reviews.length) {
+    feed.innerHTML = `
+      <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+      <div class="rv-empty">${rvResp.error ? '후기를 불러오지 못했어요 🥲' : '아직 후기가 없어요<br>첫 구매 후기를 남겨보세요! ✨'}</div>`;
+    return;
+  }
+  feed.innerHTML = `
+    <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+    ${reviews.map(r => reviewCardH(r, likeMap[r.id] || 0, myLikedSet.has(r.id), cmtMap[r.id] || 0, titleToSeller[r.item_title] || '')).join('')}`;
+}
+
+/* ── SNS 카드 HTML (2열) ── */
+function reviewCardH(r, likeCount, iLiked, cmtCount, sellerName) {
+  const photos = (r.photo_urls && r.photo_urls.length) ? r.photo_urls : (r.photo_url ? [r.photo_url] : []);
+  const ismine = r.reviewer_name === myN;
+  const escapedPhotos = photos.map(p => esc(p));
+  const photosJsonStr = escapedPhotos.map(p => `'${p}'`).join(',');
+
+  let photosHtml = '';
+  if (photos.length === 1) {
+    photosHtml = `<div class="rv-photos-strip">
+      <div class="rv-photos-slides">
+        <div class="rv-photo-s" onclick="openPhotoModal('${escapedPhotos[0]}',[${photosJsonStr}],0)">
+          <img src="${escapedPhotos[0]}" alt="후기 사진" loading="lazy">
+        </div>
+      </div>
+    </div>`;
+  } else if (photos.length > 1) {
+    const slides = escapedPhotos.map((p, idx) =>
+      `<div class="rv-photo-s" onclick="openPhotoModal('${p}',[${photosJsonStr}],${idx})">
+        <img src="${p}" alt="사진 ${idx + 1}" loading="lazy">
+      </div>`).join('');
+    photosHtml = `<div class="rv-photos-strip">
+      <div class="rv-photos-slides" onscroll="updateRvPhotoCounter(this)">${slides}</div>
+      <div class="rv-photo-counter">1/${photos.length}</div>
+    </div>`;
+  }
+
+  const itemLabel = r.item_title
+    ? `🛍️ ${esc(r.item_title)}${sellerName ? ` · ${esc(sellerName)}` : ''}`
+    : '';
+
+  return `<div class="rv-card" data-rid="${r.id}">
+    ${photosHtml}
+    <div class="rv-body">
+      <div class="rv-top">
+        <div class="rv-av">${av(r.reviewer_photo || '', r.reviewer_name, 22)}</div>
+        <div class="rv-top-info">
+          <span class="rv-name">${esc(r.reviewer_name)}</span>
+          <span class="rv-time">${relTime(r.created_at)}</span>
+        </div>
+        ${ismine ? `<button class="rv-more-btn" onclick="event.stopPropagation();openRvMenu(event,'${r.id}')">···</button>` : ''}
+      </div>
+      ${itemLabel ? `<div class="rv-item-tag" title="${itemLabel}">${itemLabel}</div>` : ''}
+      <div class="rv-stars-disp">${renderStarsHtml(r.rating || 0)}</div>
+      <div class="rv-text">${esc(r.content)}</div>
+      <div class="rv-actions">
+        <button class="rv-act-btn${iLiked ? ' liked' : ''}" onclick="toggleReviewLike('${r.id}',this)">
+          ${iLiked ? '❤️' : '🤍'} <span>${likeCount}</span>
+        </button>
+        <button class="rv-act-btn" onclick="openReviewDetail('${r.id}')">
+          💬 <span>${cmtCount}</span>
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── 사진 캐러셀 카운터 업데이트 ── */
+function updateRvPhotoCounter(el) {
+  const idx = Math.round(el.scrollLeft / el.clientWidth) + 1;
+  const total = el.querySelectorAll('.rv-photo-s').length;
+  const counter = el.parentElement.querySelector('.rv-photo-counter');
+  if (counter) counter.textContent = `${idx}/${total}`;
+}
+
+/* ── 좋아요 토글 ── */
+async function toggleReviewLike(reviewId, btn) {
+  const span = btn.querySelector('span');
+  const isLiked = btn.classList.contains('liked');
+  try {
+    if (isLiked) {
+      await sb.from('review_likes').delete().eq('review_id', reviewId).eq('user_name', myN);
+      btn.classList.remove('liked');
+      btn.innerHTML = `🤍 <span>${Math.max(0, parseInt(span.textContent || '0') - 1)}</span>`;
+    } else {
+      await sb.from('review_likes').insert({ review_id: reviewId, user_name: myN });
+      btn.classList.add('liked');
+      btn.innerHTML = `❤️ <span>${parseInt(span.textContent || '0') + 1}</span>`;
+    }
+  } catch (e) { console.error('좋아요 실패', e); }
+}
+
+/* ── 댓글 상세 화면 ── */
+async function openReviewDetail(reviewId) {
+  if (document.getElementById('_rvDetModal')) return;
+  const modal = document.createElement('div');
+  modal.className = 'rv-det-modal'; modal.id = '_rvDetModal';
+  modal.innerHTML = `
+    <div class="rv-det-hdr">
+      <button class="back-btn" onclick="closeReviewDetail()" aria-label="뒤로"><i class="ti ti-arrow-left"></i></button>
+      <h3>후기 댓글</h3>
+    </div>
+    <div class="rv-det-body" id="_rvDetBody">
+      <div class="loading" style="padding:30px 0;text-align:center"><div class="spin"></div> 불러오는 중...</div>
+    </div>
+    <div class="rv-cmt-bar">
+      <textarea id="_rvCmtInput" placeholder="댓글을 남겨주세요" maxlength="300" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();submitRvComment('${reviewId}')}"></textarea>
+      <button class="rv-cmt-send" onclick="submitRvComment('${reviewId}')">전송</button>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const [rvResp, cmtsResp] = await Promise.all([
+    sb.from('reviews').select('*').eq('id', reviewId).single(),
+    sb.from('review_comments').select('*').eq('review_id', reviewId).order('created_at', { ascending: true }),
+  ]);
+  const r = rvResp.data;
+  const cmts = cmtsResp.data || [];
+  const body = document.getElementById('_rvDetBody');
+  if (!body || !r) return;
+
+  const photos = (r.photo_urls && r.photo_urls.length) ? r.photo_urls : (r.photo_url ? [r.photo_url] : []);
+  let photoHtml = '';
+  if (photos.length) {
+    const escapedPhotos = photos.map(p => esc(p));
+    const photosJson = escapedPhotos.map(p => `'${p}'`).join(',');
+    photoHtml = `<div style="width:100%;aspect-ratio:1;overflow:hidden;cursor:pointer" onclick="openPhotoModal('${escapedPhotos[0]}',[${photosJson}],0)"><img src="${escapedPhotos[0]}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"></div>`;
+  }
+
+  body.innerHTML = `
+    <div class="rv-det-review">
+      ${photoHtml}
+      <div style="padding:${photos.length?'12px 0 0':'0'}">
+        <div class="rv-top" style="margin-bottom:8px">
+          <div class="rv-av">${av(r.reviewer_photo || '', r.reviewer_name, 30)}</div>
+          <div class="rv-top-info">
+            <span class="rv-name">${esc(r.reviewer_name)}</span>
+            <span class="rv-time">${relTime(r.created_at)}</span>
+          </div>
+        </div>
+        ${r.item_title ? `<div class="rv-item-tag">🛍️ ${esc(r.item_title)}</div>` : ''}
+        <div class="rv-stars-disp" style="margin:5px 0">${renderStarsHtml(r.rating || 0)}</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6">${esc(r.content)}</div>
+      </div>
+    </div>
+    <div class="rv-det-comments" id="_rvCmtList">
+      ${cmts.length ? cmts.map(c => rvCmtHtml(c)).join('') : '<div style="text-align:center;padding:20px 0;color:var(--text3);font-size:13px;font-weight:700">아직 댓글이 없어요. 첫 댓글을 남겨보세요!</div>'}
+    </div>`;
+}
+
+function rvCmtHtml(c) {
+  return `<div class="rv-cmt-item">
+    <div class="rv-cmt-av">${av(c.author_photo || '', c.author_name, 26)}</div>
+    <div class="rv-cmt-bubble">
+      <div class="rv-cmt-name">${esc(c.author_name)}</div>
+      <div class="rv-cmt-text">${escLines(c.content)}</div>
+      <div class="rv-cmt-time">${relTime(c.created_at)}</div>
+    </div>
+  </div>`;
+}
+
+let _rvCmtPending = false;
+async function submitRvComment(reviewId) {
+  if (_rvCmtPending) return;
+  const input = document.getElementById('_rvCmtInput');
+  const text = input?.value.trim();
+  if (!text) { toast('댓글을 입력해주세요'); return; }
+  _rvCmtPending = true;
+  if (input) { input.value = ''; input.style.height = ''; }  // ← await 전에 즉시 비워서 중복 방지
+  const sendBtn = document.querySelector('#_rvDetModal .rv-cmt-send');
+  if (sendBtn) sendBtn.disabled = true;
+  try {
+    const { data, error } = await sb.from('review_comments').insert({
+      review_id: reviewId,
+      author_name: myN,
+      author_photo: myP || null,
+      content: text,
+    }).select().single();
+    if (error) throw error;
+    const list = document.getElementById('_rvCmtList');
+    if (list) {
+      if (list.querySelector('div[style*="center"]')) list.innerHTML = '';
+      list.insertAdjacentHTML('beforeend', rvCmtHtml(data));
+      list.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+    }
+    // 카드 댓글 수 업데이트
+    const card = document.querySelector(`[data-rid="${reviewId}"] .rv-act-btn:last-child span`);
+    if (card) card.textContent = String(parseInt(card.textContent || '0') + 1);
+  } catch (e) {
+    console.error('댓글 실패', e);
+    toast('댓글 등록에 실패했어요');
+    if (input) input.value = text;   // 실패 시 입력값 복원
+  } finally {
+    _rvCmtPending = false;
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
+function closeReviewDetail() {
+  document.getElementById('_rvDetModal')?.remove();
+  _rvCmtPending = false;
+}
+
+/* ── 수정/삭제 메뉴 ── */
+function openRvMenu(e, reviewId) {
+  document.querySelector('.rv-menu')?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'rv-menu';
+  const rect = e.currentTarget.getBoundingClientRect();
+  menu.style.cssText = `top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;`;
+  menu.innerHTML = `
+    <button class="rv-menu-item" onclick="closeRvMenu();openEditReview('${reviewId}')">✏️ 수정</button>
+    <button class="rv-menu-item danger" onclick="closeRvMenu();deleteReview('${reviewId}')">🗑️ 삭제</button>`;
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', closeRvMenu, { once: true }), 0);
+}
+
+function closeRvMenu() {
+  document.querySelector('.rv-menu')?.remove();
+}
+
+async function deleteReview(reviewId) {
+  if (!confirm('후기를 삭제할까요?')) return;
+  try {
+    const { error } = await sb.from('reviews').delete().eq('id', reviewId);
+    if (error) throw error;
+    toast('후기를 삭제했어요');
+    if (statF === '후기') renderReviews();
+  } catch (e) {
+    console.error('후기 삭제 실패', e);
+    toast('삭제에 실패했어요');
+  }
+}
+
+async function openEditReview(reviewId) {
+  const { data: r, error } = await sb.from('reviews').select('*').eq('id', reviewId).single();
+  if (error || !r) { toast('후기를 불러오지 못했어요'); return; }
+  await openReviewForm(r);
+}
+
+/* ── 후기 작성/수정 폼 ── */
+async function openReviewForm(editReview = null) {
+  if (document.getElementById('_rvModal')) return;
+  rvEditId = editReview ? editReview.id : null;
+  rvRating = editReview ? (editReview.rating || 0) : 0;
+  rvPhotos = [];
+  rvExistingPhotos = editReview
+    ? ((editReview.photo_urls && editReview.photo_urls.length) ? [...editReview.photo_urls] : (editReview.photo_url ? [editReview.photo_url] : []))
+    : [];
+
+  const { data: sold } = await sb.from('items')
+    .select('id,title,seller_name')
+    .eq('sold', true)
+    .neq('description', DELETED_MARK)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  rvSoldItems = sold || [];
+
+  const modal = document.createElement('div');
+  modal.className = 'rv-modal'; modal.id = '_rvModal';
+  const title = rvEditId ? '✏️ 후기 수정하기' : '✍️ 구매 후기 남기기';
+  const btnLabel = rvEditId ? '후기 수정' : '후기 등록';
+
+  modal.innerHTML = `
+    <div class="rv-sheet">
+      <div class="rv-sheet-hdr">
+        <h3>${title}</h3>
+        <button class="rv-sheet-close" onclick="closeReviewForm()">✕</button>
+      </div>
+      <div class="fr">
+        <label>어떤 상품을 구매하셨나요? *</label>
+        <select id="_rvItem">
+          <option value="">상품을 선택해주세요</option>
+          <option value="__none__">선택 안함</option>
+          ${rvSoldItems.map(i => `<option value="${esc(i.id)}"${editReview && editReview.item_title === i.title ? ' selected' : ''}>${esc(i.title)} · ${esc(i.seller_name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fr">
+        <label>별점 * <span style="color:var(--text3);font-size:10px;font-weight:400">왼쪽 절반=0.5점</span></label>
+        <div class="rv-stars-pick" id="_rvStars">
+          ${[1,2,3,4,5].map(n => `<span data-n="${n}">★</span>`).join('')}
+        </div>
+        <div class="rv-rating-hint" id="_rvRatingHint">${rvRating > 0 ? `${rvRating}점` : '별점을 선택해주세요'}</div>
+      </div>
+      <div class="fr">
+        <label>후기 사진 <span style="color:var(--text3);font-weight:400">(선택 · 여러 장)</span></label>
+        <div id="_rvPhotoZone" class="img-zone" onclick="document.getElementById('_rvFile').click()">
+          <i class="ti ti-camera" style="font-size:20px;"></i> 사진을 올려주세요
+        </div>
+        <input type="file" id="_rvFile" accept="image/*" style="display:none" onchange="handleRvPhoto(this)">
+      </div>
+      <div class="fr">
+        <label>후기 내용 *</label>
+        <textarea id="_rvContent" placeholder="구매 후기를 남겨주세요" style="min-height:90px;resize:vertical">${editReview ? esc(editReview.content) : ''}</textarea>
+      </div>
+      <button class="rv-submit" onclick="submitReview()">${btnLabel}</button>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) closeReviewForm(); });
+  document.body.appendChild(modal);
+
+  // 별점 터치 이벤트 연결
+  const starsEl = document.getElementById('_rvStars');
+  if (starsEl) {
+    starsEl.addEventListener('touchstart', rvStarHit, { passive: true });
+    starsEl.addEventListener('touchmove', rvStarHit, { passive: true });
+    starsEl.addEventListener('click', rvStarHit);
+  }
+  renderRvStarPicker();
+  renderRvPhotoPreviews();
+}
+
+function closeReviewForm() {
+  document.getElementById('_rvModal')?.remove();
+  rvPhotos = []; rvExistingPhotos = []; rvEditId = null; rvRating = 0;
+}
+
+/* ── 별점 피커 ── */
+function rvStarHit(e) {
+  e.stopPropagation();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  if (clientX === undefined) return;
+  const spans = [...document.querySelectorAll('#_rvStars [data-n]')];
+  if (!spans.length) return;
+  let best = 0.5;
+  for (const span of spans) {
+    const rect = span.getBoundingClientRect();
+    if (clientX >= rect.left) {
+      const isLeft = (clientX - rect.left) < rect.width / 2;
+      best = isLeft ? Number(span.dataset.n) - 0.5 : Number(span.dataset.n);
+    }
+  }
+  rvRating = Math.max(0.5, Math.min(5, best));
+  renderRvStarPicker();
+}
+
+function renderRvStarPicker() {
+  const spans = document.querySelectorAll('#_rvStars [data-n]');
+  spans.forEach(span => {
+    const n = Number(span.dataset.n);
+    span.className = rvRating >= n ? 'full' : rvRating >= n - 0.5 ? 'half' : '';
+  });
+  const hint = document.getElementById('_rvRatingHint');
+  if (hint) hint.textContent = rvRating > 0 ? `${rvRating}점` : '별점을 선택해주세요';
+}
+
+/* ── 사진 처리 ── */
+async function handleRvPhoto(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    const dataUrl = await readItemImage(file, 1400, 0.85);
+    if (dataUrl) {
+      rvPhotos.push(dataUrl);
+      renderRvPhotoPreviews();
+    }
+  } catch (e) {
+    console.error('사진 처리 실패', e);
+    toast('사진을 처리하지 못했어요');
+  }
+  input.value = '';
+}
+
+function renderRvPhotoPreviews() {
+  const zone = document.getElementById('_rvPhotoZone');
+  if (!zone) return;
+  const existing = rvExistingPhotos.map((url, i) => ({ src: url, type: 'e', idx: i }));
+  const newOnes  = rvPhotos.map((d, i)          => ({ src: d,   type: 'n', idx: i }));
+  const all = [...existing, ...newOnes];
+  if (!all.length) {
+    zone.className = 'img-zone';
+    zone.onclick = () => document.getElementById('_rvFile').click();
+    zone.innerHTML = `<i class="ti ti-camera" style="font-size:20px;"></i> 사진을 올려주세요`;
+    return;
+  }
+  zone.className = 'img-zone has-img';
+  zone.onclick = null;
+  zone.innerHTML = all.map(p => `
+    <div class="photo-preview">
+      <img src="${p.src}" alt="사진">
+      <button class="photo-del" onclick="removeRvPhoto('${p.type}',${p.idx})" type="button">✕</button>
+    </div>`).join('') +
+    `<div class="photo-add" onclick="document.getElementById('_rvFile').click()">
+      <i class="ti ti-plus" style="font-size:18px;"></i><span style="font-size:11px">추가</span>
+    </div>`;
+}
+
+function removeRvPhoto(type, idx) {
+  if (type === 'e') rvExistingPhotos.splice(idx, 1);
+  else rvPhotos.splice(idx, 1);
+  renderRvPhotoPreviews();
+}
+
+/* ── 후기 등록 / 수정 ── */
+async function submitReview() {
+  const sel = document.getElementById('_rvItem');
+  const selVal = sel?.value || '';
+  const content = document.getElementById('_rvContent')?.value.trim();
+  if (!selVal) { toast('상품을 선택하거나 "선택 안함"을 눌러주세요'); return; }
+  if (!rvRating) { toast('별점을 선택해주세요'); return; }
+  if (!content) { toast('후기 내용을 입력해주세요'); return; }
+  const itemTitle = selVal === '__none__' ? '' : (rvSoldItems.find(i => i.id === selVal)?.title || '');
+  const btn = document.querySelector('#_rvModal .rv-submit');
+  if (btn) { btn.disabled = true; btn.textContent = rvEditId ? '수정 중...' : '등록 중...'; }
+  try {
+    // 새 사진 업로드
+    const newUrls = await Promise.all(rvPhotos.map(d => uploadImageDataUrl(d, 'items')));
+    const photo_urls = [...rvExistingPhotos, ...newUrls].filter(Boolean);
+
+    if (rvEditId) {
+      const { error } = await sb.from('reviews').update({
+        item_title: itemTitle,
+        content,
+        rating: rvRating,
+        photo_urls,
+        photo_url: photo_urls[0] || '',
+      }).eq('id', rvEditId);
+      if (error) throw error;
+      toast('후기를 수정했어요 ✅');
+    } else {
+      const { error } = await sb.from('reviews').insert({
+        reviewer_name: myN,
+        reviewer_photo: myP || null,
+        photo_url: photo_urls[0] || '',
+        photo_urls,
+        item_title: itemTitle,
+        content,
+        rating: rvRating,
+      });
+      if (error) throw error;
+      toast('후기를 등록했어요 🎉');
+    }
+    closeReviewForm();
+    if (statF === '후기') renderReviews();
+  } catch (e) {
+    console.error('후기 저장 실패', e);
+    toast('저장에 실패했어요');
+    if (btn) { btn.disabled = false; btn.textContent = rvEditId ? '후기 수정' : '후기 등록'; }
+  }
 }
 
 /* ════════════════════════════════
@@ -1706,13 +2297,13 @@ function renderDetLoading(it) {
   </div>
   <div class="det-gallery"><div class="det-img" style="background:${bgM[it.category] || '#F1EFE8'}"><div class="loading"><div class="spin"></div> 사진 불러오는 중...</div></div></div>
   <div class="det-content">
-    <div class="det-price">${(it.price || 0).toLocaleString()}원</div>
+    <div class="det-price${(it.price || 0) === 0 ? ' price-nanoom' : ''}">${(it.price || 0) === 0 ? '나눔 💚' : (it.price || 0).toLocaleString()+'원'}</div>
     <div class="det-title">${esc(it.title || '상품')}</div>
     <div class="det-desc">${esc(it.description || '')}</div>
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
-        <input class="cmt-inp" id="_dci" type="text" placeholder="댓글을 남겨 보세요" maxlength="200">
+        <textarea class="cmt-inp" id="_dci" placeholder="댓글을 남겨 보세요" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doAddCmt()}"></textarea>
         <button class="cmt-post" onclick="doAddCmt()">등록</button>
       </div>
       <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
@@ -1736,7 +2327,7 @@ function renderDet() {
   </div>
   <div class="det-gallery">${itemGallery(it.emoji, it.category)}</div>
   <div class="det-content">
-    <div class="det-price">${it.price.toLocaleString()}원</div>
+    <div class="det-price${it.price === 0 ? ' price-nanoom' : ''}">${it.price === 0 ? '나눔 💚' : it.price.toLocaleString()+'원'}</div>
     <div class="det-title">${esc(it.title)}</div>
     <div class="det-stats">
       <div class="det-stat"><i class="ti ti-heart" aria-hidden="true" style="font-size:13px;"></i> <span id="_det-like-cnt">${it.likeCount || 0}</span></div>
@@ -1756,7 +2347,7 @@ function renderDet() {
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
-        <input class="cmt-inp" id="_dci" type="text" placeholder="댓글을 남겨 보세요" maxlength="200">
+        <textarea class="cmt-inp" id="_dci" placeholder="댓글을 남겨 보세요" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doAddCmt()}"></textarea>
         <button class="cmt-post" onclick="doAddCmt()">등록</button>
       </div>
       <div class="cmt-list" id="_dcl"><div class="loading"><div class="spin"></div></div></div>
@@ -1836,14 +2427,14 @@ function cmtHTML(c, reps) {
       ${isSeller ? '<span class="seller-tag">판매자</span>' : ''}
       <span class="cmt-time">${relTime(c.created_at)}</span>
     </div>
-    <div class="cmt-text" id="ctxt-${c.id}">${esc(c.content)}</div>
+    <div class="cmt-text" id="ctxt-${c.id}">${escLines(c.content)}</div>
     <div class="cmt-acts">
       <button class="ca" onclick="toggleRepForm('${c.id}')">↩ 답글</button>
       ${isMine ? `<button class="ca" onclick="startEditCmt('${c.id}')">수정</button>
 	                  <button class="ca" onclick="doDelCmt('${c.id}')">삭제</button>` : ''}
     </div>
     <div id="rep-form-${c.id}" style="display:none;" class="rep-form">
-      <input class="rep-inp" id="ri-${c.id}" type="text" placeholder="답글 입력" maxlength="200">
+      <textarea class="rep-inp" id="ri-${c.id}" placeholder="답글 입력" maxlength="200" rows="1" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doAddRep('${c.id}')}"></textarea>
       <button class="rep-post" onclick="doAddRep('${c.id}')">등록</button>
     </div>
     ${reps.length ? `<div class="replies">${reps.map(r => repHTML(r)).join('')}</div>` : ''}
@@ -1863,7 +2454,7 @@ function repHTML(r) {
       </div>
       <span style="font-size:10px;color:var(--text3);">${relTime(r.created_at)}</span>
     </div>
-    <div class="rep-text" id="ctxt-${r.id}">${esc(r.content)}</div>
+    <div class="rep-text" id="ctxt-${r.id}">${escLines(r.content)}</div>
     ${isMine ? `<div class="rep-acts">
       <button class="ca" onclick="startEditCmt('${r.id}')">수정</button>
       <button class="ca" onclick="doDelCmt('${r.id}')">삭제</button>
@@ -1881,18 +2472,19 @@ function startEditCmt(id) {
   const txtEl = document.getElementById('ctxt-' + id);
   if (!txtEl) return;
   const oldText = commentTextMap.get(id) || '';
-  txtEl.innerHTML = `<div style="display:flex;gap:5px;margin-top:4px;">
-    <input class="rep-inp" id="edit-inp-${id}" value="${esc(oldText)}" style="flex:1;height:32px;">
+  txtEl.innerHTML = `<div style="display:flex;gap:5px;margin-top:4px;align-items:flex-start;">
+    <textarea class="rep-inp" id="edit-inp-${id}" rows="1" style="flex:1;" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();doSaveCmt('${id}')}">${esc(oldText)}</textarea>
     <button class="rep-post" onclick="doSaveCmt('${id}')">저장</button>
     <button class="ca" onclick="renderComments(curId, commentCache.get(curId) || [])">취소</button>
   </div>`;
-  document.getElementById('edit-inp-' + id)?.focus();
+  const editEl = document.getElementById('edit-inp-' + id);
+  if (editEl) { autoGrow(editEl); editEl.focus(); }
 }
 
 async function doAddCmt() {
   const inp = document.getElementById('_dci');
-  const v = normalizeText(inp.value).trim(); if (!v) return;
-  inp.value = '';
+  const v = inp.value.trim(); if (!v) return;
+  inp.value = ''; inp.style.height = '';
   await insertComment(curId, v);
   commentCache.delete(curId);
   forgetCachedComments(curId);
@@ -1901,7 +2493,7 @@ async function doAddCmt() {
 
 async function doAddRep(parentId) {
   const inp = document.getElementById('ri-' + parentId);
-  const v = normalizeText(inp?.value).trim(); if (!v) return;
+  const v = inp?.value.trim(); if (!v) return;
   await insertComment(curId, v, parentId);
   commentCache.delete(curId);
   forgetCachedComments(curId);
@@ -1910,7 +2502,7 @@ async function doAddRep(parentId) {
 
 async function doSaveCmt(id) {
   const inp = document.getElementById('edit-inp-' + id);
-  const v = normalizeText(inp?.value).trim(); if (!v) return;
+  const v = inp?.value.trim(); if (!v) return;
   await updateComment(id, v);
   toast('댓글을 수정했어요');
   commentCache.delete(curId);
@@ -2002,8 +2594,6 @@ function renderNotifications() {
         </div>`).join('')
       : '<div class="empty-my">아직 새 알림이 없어요</div>'}
   </div>`;
-
-  pollNotifications();
 }
 
 async function openNotificationItem(itemId) {
@@ -2018,7 +2608,10 @@ async function openNotificationItem(itemId) {
 }
 
 function deleteNotification(id) {
-  const next = loadNotifications().filter(n => n.id !== id);
+  const all = loadNotifications();
+  const target = all.find(n => n.id === id);
+  if (target && target.key) saveDeletedNotiKey(target.key);
+  const next = all.filter(n => n.id !== id);
   saveNotifications(next);
   updateNotificationBadge();
   renderNotifications();
@@ -2103,7 +2696,7 @@ function itemRowH(i) {
     <div class="item-row-em">${itemMedia(i.emoji, i.category)}</div>
     <div class="item-row-info">
       <div class="item-row-name">${esc(i.title)}</div>
-      <div class="item-row-price">${i.price.toLocaleString()}원</div>
+      <div class="item-row-price${i.price === 0 ? ' price-nanoom' : ''}">${i.price === 0 ? '나눔 💚' : i.price.toLocaleString()+'원'}</div>
       <div class="item-row-meta">${relTime(i.created_at)} · ❤️ ${i.likeCount}</div>
     </div>
     <span class="status-pill ${pt}">${ptxt}</span>
@@ -2111,7 +2704,7 @@ function itemRowH(i) {
 }
 
 function saveNick() {
-  const v = normalizeText(document.getElementById('_nei').value).trim(); if (!v) return;
+  const v = document.getElementById('_nei').value.trim(); if (!v) return;
   myN = v; saveProfile(); startNotificationPolling(); renderMy(); toast('닉네임을 변경했어요');
 }
 
@@ -2126,6 +2719,14 @@ function startNotificationPolling() {
 /* ════════════════════════════════
    판매 등록
 ════════════════════════════════ */
+function toggleNanoom(checked) {
+  const priceInput = document.getElementById('_np');
+  if (!priceInput) return;
+  priceInput.style.display = checked ? 'none' : '';
+  if (checked) priceInput.value = '0';
+  else if (priceInput.value === '0') priceInput.value = '';
+}
+
 function renderSell(item = null) {
   editingItemId = item?.id || null;
   const itemMediaPayload = item ? (itemRecordPayload(item) || item.emoji) : '';
@@ -2144,7 +2745,11 @@ function renderSell(item = null) {
     <div class="fr"><label>카테고리</label>
       <select id="_nc">${cats.map(c => `<option${item?.category === c ? ' selected' : ''}>${c}</option>`).join('')}</select>
     </div>
-    <div class="fr"><label>가격 (원) *</label><input type="number" id="_np" placeholder="예) 15000" value="${item?.price || ''}"></div>
+    <div class="fr">
+      <label>가격</label>
+      <label class="nanoom-row"><input type="checkbox" id="_nnm" onchange="toggleNanoom(this.checked)"${edit && item.price === 0 ? ' checked' : ''}> <span>나눔이에요 💚 (무료)</span></label>
+      <input type="number" id="_np" placeholder="예) 15000" value="${edit && item.price > 0 ? item.price : ''}"${edit && item.price === 0 ? ' style="display:none"' : ''}>
+    </div>
     <div class="fr"><label>설명</label><textarea id="_nd" placeholder="상태, 구매 시기, 직거래 여부 등을 적어 주세요">${esc(item?.description)}</textarea></div>
     <button class="reg-btn" id="_regbtn" onclick="${edit ? 'doUpdateItem()' : 'doAddItem()'}">${edit ? '수정하기' : '등록하기'}</button>
   </div>`;
@@ -2170,11 +2775,13 @@ function removeItemPhoto(idx) {
 }
 
 async function doAddItem() {
-  const t = normalizeText(document.getElementById('_nt').value).trim();
-  const p = parseInt(document.getElementById('_np').value) || 0;
+  const t = document.getElementById('_nt').value.trim();
+  const isNanoom = document.getElementById('_nnm')?.checked;
+  const p = isNanoom ? 0 : (parseInt(document.getElementById('_np').value) || 0);
   const c = document.getElementById('_nc').value;
-  const d = normalizeText(document.getElementById('_nd').value).trim();
-  if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
+  const d = document.getElementById('_nd').value.trim();
+  if (!t) { toast('제목을 입력해 주세요'); return; }
+  if (!isNanoom && !p) { toast('가격을 입력하거나 나눔을 선택해 주세요'); return; }
 	  const btn = document.getElementById('_regbtn');
 	  btn.textContent = '등록 중...'; btn.disabled = true;
 	  try {
@@ -2187,6 +2794,7 @@ async function doAddItem() {
 	    });
 	    toast('상품이 등록됐어요 🎉');
     statF = '판매중'; catF = '전체';
+    try { localStorage.setItem('gurogu_statF', '판매중'); localStorage.setItem('gurogu_catF', '전체'); } catch (e) {}
     goBack();
     await renderMain('');
   } catch (e) {
@@ -2197,11 +2805,13 @@ async function doAddItem() {
 
 async function doUpdateItem() {
   if (!editingItemId || !curItem) return;
-  const t = normalizeText(document.getElementById('_nt').value).trim();
-  const p = parseInt(document.getElementById('_np').value) || 0;
+  const t = document.getElementById('_nt').value.trim();
+  const isNanoom = document.getElementById('_nnm')?.checked;
+  const p = isNanoom ? 0 : (parseInt(document.getElementById('_np').value) || 0);
   const c = document.getElementById('_nc').value;
-  const d = normalizeText(document.getElementById('_nd').value).trim();
-  if (!t || !p) { toast('제목과 가격을 입력해 주세요'); return; }
+  const d = document.getElementById('_nd').value.trim();
+  if (!t) { toast('제목을 입력해 주세요'); return; }
+  if (!isNanoom && !p) { toast('가격을 입력하거나 나눔을 선택해 주세요'); return; }
 	  const btn = document.getElementById('_regbtn');
 	  btn.textContent = '수정 중...'; btn.disabled = true;
 	  try {
