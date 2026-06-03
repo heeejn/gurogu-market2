@@ -265,6 +265,13 @@
     .rv-det-hdr { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: .5px solid var(--br); flex-shrink: 0; }
     .rv-det-hdr h3 { font-size: 15px; font-weight: 800; margin: 0; flex: 1; }
     .rv-det-body { flex: 1; overflow-y: auto; }
+    /* 후기 상세 사진 슬라이더 */
+    .rv-photo-slider { position: relative; width: 100%; aspect-ratio: 1; background: var(--surface); }
+    .rv-photo-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; width: 100%; height: 100%; }
+    .rv-photo-track::-webkit-scrollbar { display: none; }
+    .rv-photo-slide { flex: 0 0 100%; width: 100%; height: 100%; scroll-snap-align: start; cursor: pointer; overflow: hidden; }
+    .rv-photo-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .rv-photo-counter { position: absolute; bottom: 10px; right: 12px; background: rgba(0,0,0,.52); color: #fff; font-size: 11px; font-weight: 800; border-radius: 20px; padding: 3px 9px; pointer-events: none; z-index: 5; }
     .rv-det-review { padding: 14px; border-bottom: .5px solid var(--br); }
     .rv-det-comments { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
     .rv-cmt-item { display: flex; gap: 8px; }
@@ -279,6 +286,17 @@
     .rv-cmt-bar textarea:focus { outline: none; border-color: var(--pink); }
     .rv-cmt-send { background: var(--pink); color: #fff; border: none; border-radius: 20px; padding: 9px 14px; font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; white-space: nowrap; }
     /* 후기 메뉴 */
+    /* ─── 업데이트 팝업 ─── */
+    .update-overlay { position: fixed; inset: 0; z-index: 1400; background: rgba(10,10,24,.52); display: flex; align-items: flex-end; justify-content: center; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .update-sheet { background: var(--surface); border-radius: 22px 22px 0 0; width: 100%; max-width: 430px; padding: 28px 22px calc(22px + env(safe-area-inset-bottom, 0px)); animation: sheetUp .28s cubic-bezier(.32,.72,0,1) both; }
+    @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .update-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--pink-bg); color: var(--pink-dark); border: .5px solid var(--pink-br); border-radius: 999px; font-size: 11px; font-weight: 800; padding: 4px 10px; margin-bottom: 14px; }
+    .update-body { font-size: 13px; color: var(--text2); line-height: 1.6; word-break: keep-all; }
+    .update-body strong { color: var(--text); font-weight: 800; }
+    .update-body .update-item { display: flex; gap: 7px; margin: 4px 0; font-size: 13px; }
+    .update-body .update-item:first-of-type { margin-top: 8px; }
+    .update-divider { border: none; border-top: .5px solid var(--br); margin: 12px 0; }
+    .update-confirm { width: 100%; margin-top: 18px; height: 48px; background: var(--pink); color: #fff; border: none; border-radius: 13px; font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent; }
     .rv-menu { position: fixed; z-index: 1100; background: var(--surface); border: .5px solid var(--br); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.18); overflow: hidden; min-width: 130px; }
     .rv-menu-item { padding: 13px 16px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; background: none; border: none; width: 100%; text-align: left; color: var(--text); }
     .rv-menu-item:hover { background: var(--bg); }
@@ -295,9 +313,10 @@
     .det-gallery-wrap { position: relative; background: var(--surface); }
     .det-pg-counter { position: absolute; bottom: 10px; right: 12px; background: rgba(0,0,0,.52); color: #fff; font-size: 11px; font-weight: 800; border-radius: 20px; padding: 3px 9px; pointer-events: none; z-index: 5; }
     /* ─── 고민돼요 ─── */
-    .det-reactions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .det-reactions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
     .gomind-btn { background: var(--bg); border: .5px solid var(--br2); border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; color: var(--text2); -webkit-tap-highlight-color: transparent; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
     .gomind-btn.on { background: #FEF8ED; border-color: #F0C080; color: #885000; }
+    .gomind-names { font-size: 11px; color: var(--text3); margin-bottom: 12px; min-height: 0; line-height: 1.5; width: 100%; }
     /* ─── 사진 여러개 배지 ─── */
     .card-thumb-wrap { position: relative; width: 100%; }
     .photo-multi-badge { position: absolute; bottom: 7px; right: 7px; background: rgba(10,10,22,.62); color: #fff; font-size: 9px; font-weight: 800; border-radius: 6px; padding: 2px 6px; pointer-events: none; z-index: 2; }
@@ -319,6 +338,11 @@
     .rv-rep-time { font-size: 9px; color: var(--text3); margin-top: 3px; }
     .rv-cmt-rep-form { display: none; gap: 6px; margin-top: 8px; align-items: flex-end; }
     .rv-cmt-rep-form.open { display: flex; }
+    /* 후기 댓글 인라인 수정 */
+    .rv-edit-ta { width: 100%; border: .5px solid var(--pink-br); border-radius: 8px; padding: 7px 9px; font-size: 12px; font-family: inherit; color: var(--text); background: var(--bg); resize: none; outline: none; line-height: 1.5; }
+    .rv-edit-acts { display: flex; gap: 6px; margin-top: 5px; justify-content: flex-end; }
+    .rv-edit-cancel { background: var(--bg); border: .5px solid var(--br2); color: var(--text2); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .rv-edit-save { background: var(--pink); border: none; color: #fff; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
     .rv-cmt-rep-inp { flex: 1; min-height: 34px; max-height: 80px; border: .5px solid var(--br2); border-radius: 10px; padding: 7px 11px; font-size: 12px; font-family: inherit; color: var(--text); background: var(--bg); resize: none; overflow-y: auto; line-height: 1.4; }
     .rv-cmt-rep-inp:focus { outline: none; border-color: var(--pink); }
     .rv-cmt-rep-post { background: var(--pink-bg); color: var(--pink-dark); border: .5px solid var(--pink-br); border-radius: 10px; padding: 0 11px; height: 34px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
@@ -897,6 +921,17 @@ async function refreshActiveScreen() {
   }
 }
 
+/* ── 로고 탭 → 맨 위 or 새로고침 ── */
+function logoTap(e) {
+  if (e) e.stopPropagation(); // #app 의 헤더 클릭 리스너 중복 방지
+  const active = activeScreenEl();
+  if (active && active.scrollTop > 30) {
+    active.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    refreshActiveScreen();
+  }
+}
+
 /* ── 알림 ── */
 function notificationKey() {
   return NOTI_KEY_PREFIX + (myN || userKey);
@@ -1059,6 +1094,71 @@ async function pollNotifications(silent = true) {
         message: `${c.author_name || '누군가'} 님이 내 댓글에 답글을 남겼어요: ${String(c.content || '').slice(0, 40)}`,
       }));
   }
+
+  /* ── 후기 댓글 / 후기 댓글 답글 알림 ── */
+  try {
+    // 내가 작성한 후기 ID 목록
+    const { data: myRvs } = await sb.from('reviews').select('id,item_title').eq('reviewer_name', myN).limit(200);
+    const myRvIds = (myRvs || []).map(r => r.id);
+    const rvTitleById = new Map((myRvs || []).map(r => [r.id, r.item_title || '내 후기']));
+
+    // 내 후기에 달린 댓글 (루트 댓글만, 내 것 제외)
+    let rvRootCmts = [];
+    if (myRvIds.length) {
+      const { data: rvCmtsData } = await sb
+        .from('review_comments')
+        .select('id,review_id,author_name,content,parent_id,created_at')
+        .in('review_id', myRvIds)
+        .is('parent_id', null)
+        .neq('author_name', myN)
+        .order('created_at', { ascending: true });
+      rvRootCmts = rvCmtsData || [];
+    }
+
+    // 내가 작성한 후기 댓글 ID → 그에 달린 답글
+    let rvReplies = [];
+    if (myRvIds.length) {
+      const { data: myRvCmts } = await sb
+        .from('review_comments')
+        .select('id')
+        .in('review_id', myRvIds)
+        .eq('author_name', myN);
+      const myRvCmtIds = (myRvCmts || []).map(c => c.id);
+      if (myRvCmtIds.length) {
+        const { data: repliesData } = await sb
+          .from('review_comments')
+          .select('id,review_id,author_name,content,parent_id,created_at')
+          .in('parent_id', myRvCmtIds)
+          .neq('author_name', myN);
+        rvReplies = repliesData || [];
+      }
+    }
+
+    nextSeen._rv_cmts = rvRootCmts.map(c => c.id);
+    nextSeen._rv_replies = rvReplies.map(c => c.id);
+
+    if (!firstRun) {
+      const oldRvCmtIds = new Set(prevSeen._rv_cmts || []);
+      rvRootCmts
+        .filter(c => !oldRvCmtIds.has(c.id))
+        .forEach(c => newNotis.push({
+          key: `rv-cmt-${c.id}`,
+          item_id: `rv:${c.review_id}`,
+          title: rvTitleById.get(c.review_id) || '내 후기',
+          message: `${c.author_name || '누군가'} 님이 후기에 댓글을 남겼어요: ${String(c.content || '').slice(0, 40)}`,
+        }));
+
+      const oldRvReplyIds = new Set(prevSeen._rv_replies || []);
+      rvReplies
+        .filter(c => !oldRvReplyIds.has(c.id))
+        .forEach(c => newNotis.push({
+          key: `rv-reply-${c.id}`,
+          item_id: `rv:${c.review_id}`,
+          title: rvTitleById.get(c.review_id) || '내 후기',
+          message: `${c.author_name || '누군가'} 님이 내 후기 댓글에 답글을 남겼어요: ${String(c.content || '').slice(0, 40)}`,
+        }));
+    }
+  } catch (e) { console.warn('후기 댓글 알림 조회 실패', e); }
 
   saveSeenEngagement(nextSeen);
   if (newNotis.length && !silent) addNotifications(newNotis);
@@ -1634,7 +1734,7 @@ async function renderMain(q) {
 
   document.getElementById('s-main').innerHTML = `
   <div class="hdr">
-    <div class="logo" onclick="refreshActiveScreen()" style="cursor:pointer;-webkit-tap-highlight-color:transparent">
+    <div class="logo" onclick="logoTap(event)" style="cursor:pointer;-webkit-tap-highlight-color:transparent">
       ${logoImg()}
       <div class="logo-name">구로구마켓</div>
     </div>
@@ -1948,7 +2048,7 @@ function reviewCardH(r, likeCount, iLiked, cmtCount, sellerName) {
       </div>
       ${itemLabel ? `<div class="rv-item-tag" title="${itemLabel}">${itemLabel}</div>` : ''}
       <div class="rv-stars-disp">${renderStarsHtml(r.rating || 0)}</div>
-      <div class="rv-text">${esc(r.content)}</div>
+      <div class="rv-text">${escLines(r.content)}</div>
       <div class="rv-actions">
         <button class="rv-act-btn${iLiked ? ' liked' : ''}" onclick="event.stopPropagation();toggleReviewLike('${r.id}',this)">
           ${iLiked ? '❤️' : '🤍'} <span>${likeCount}</span>
@@ -1999,6 +2099,15 @@ async function toggleReviewLike(reviewId, btn) {
       detBtn.innerHTML = `${newEmoji} <span>${newCount}</span>`;
     }
   } catch (e) { console.error('좋아요 실패', e); }
+}
+
+/* ── 후기 사진 카운터 ── */
+function updateRvDetPhotoCounter(track, total) {
+  if (!track || total <= 1) return;
+  const cnt = document.getElementById('_rvPhotoCnt');
+  if (!cnt) return;
+  const idx = Math.round(track.scrollLeft / track.offsetWidth);
+  cnt.textContent = `${idx + 1}/${total}`;
 }
 
 /* ── 댓글 상세 화면 ── */
@@ -2061,8 +2170,18 @@ async function openReviewDetail(reviewId) {
   let photoHtml = '';
   if (photos.length) {
     const escapedPhotos = photos.map(p => esc(p));
-    const photosJson = escapedPhotos.map(p => `'${p}'`).join(',');
-    photoHtml = `<div style="width:100%;aspect-ratio:1;overflow:hidden;cursor:pointer" onclick="openPhotoModal('${escapedPhotos[0]}',[${photosJson}],0)"><img src="${escapedPhotos[0]}" style="width:100%;height:100%;object-fit:cover;display:block;" loading="lazy"></div>`;
+    const photosJson = JSON.stringify(escapedPhotos);
+    if (photos.length === 1) {
+      photoHtml = `<div class="rv-photo-slider"><div class="rv-photo-track"><div class="rv-photo-slide" onclick="openPhotoModal('${escapedPhotos[0]}',${photosJson},0)"><img src="${escapedPhotos[0]}" loading="lazy"></div></div></div>`;
+    } else {
+      const slides = escapedPhotos.map((p, i) =>
+        `<div class="rv-photo-slide" onclick="openPhotoModal('${p}',${photosJson},${i})"><img src="${p}" loading="lazy"></div>`
+      ).join('');
+      photoHtml = `<div class="rv-photo-slider" id="_rvPhotoSlider">
+        <div class="rv-photo-track" id="_rvPhotoTrack" onscroll="updateRvDetPhotoCounter(this,${photos.length})">${slides}</div>
+        <div class="rv-photo-counter" id="_rvPhotoCnt">1/${photos.length}</div>
+      </div>`;
+    }
   }
 
   body.innerHTML = `
@@ -2078,7 +2197,7 @@ async function openReviewDetail(reviewId) {
         </div>
         ${r.item_title ? `<div class="rv-item-tag">🛍️ ${esc(r.item_title)}${titleToSellerMap[r.item_title] ? ` · ${esc(titleToSellerMap[r.item_title])}` : ''}</div>` : ''}
         <div class="rv-stars-disp" style="margin:5px 0">${renderStarsHtml(r.rating || 0)}</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.6">${esc(r.content)}</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6">${escLines(r.content)}</div>
         <div class="rv-actions" style="margin-top:12px;padding-top:10px;border-top:.5px solid var(--br)">
           <button class="rv-act-btn${rvILiked ? ' liked' : ''}" id="_rvDetLikeBtn" onclick="toggleReviewLike('${reviewId}',this)">
             ${rvILiked ? '❤️' : '🤍'} <span>${rvLikeCount}</span>
@@ -2255,21 +2374,45 @@ async function submitRvReply(parentId, reviewId) {
 }
 
 /* ── 후기 댓글 수정 ── */
-async function editRvCmt(cmtId) {
+function editRvCmt(cmtId) {
   const textEl = document.getElementById('rvtxt-' + cmtId);
   if (!textEl) return;
-  const current = textEl.innerText;
-  const newText = prompt('댓글을 수정해주세요', current);
-  if (!newText || newText.trim() === current.trim()) return;
+  if (textEl.querySelector('textarea')) return; // 이미 편집 중
+  const original = textEl.innerText.trim();
+  textEl.dataset.orig = original; // 취소 시 복원용
+  textEl.innerHTML = `
+    <textarea class="rv-edit-ta" id="rvEditTa-${cmtId}" maxlength="300" rows="2">${original.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+    <div class="rv-edit-acts">
+      <button class="rv-edit-cancel" onclick="cancelRvCmtEdit('${cmtId}')">취소</button>
+      <button class="rv-edit-save" onclick="saveRvCmtEdit('${cmtId}',this)">저장</button>
+    </div>`;
+  const ta = document.getElementById('rvEditTa-' + cmtId);
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+async function saveRvCmtEdit(cmtId, btn) {
+  const ta = document.getElementById('rvEditTa-' + cmtId);
+  if (!ta) return;
+  const newText = ta.value.trim();
+  if (!newText) { toast('내용을 입력해주세요'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
   try {
-    const { error } = await sb.from('review_comments').update({ content: newText.trim() }).eq('id', cmtId).eq('author_name', myN);
+    const { error } = await sb.from('review_comments').update({ content: newText }).eq('id', cmtId).eq('author_name', myN);
     if (error) throw error;
-    textEl.innerHTML = escLines(newText.trim());
+    const textEl = document.getElementById('rvtxt-' + cmtId);
+    if (textEl) { textEl.innerHTML = escLines(newText); delete textEl.dataset.orig; }
     toast('댓글을 수정했어요');
   } catch (e) {
     console.error('댓글 수정 실패', e);
     toast('수정에 실패했어요');
+    if (btn) { btn.disabled = false; btn.textContent = '저장'; }
   }
+}
+function cancelRvCmtEdit(cmtId) {
+  const textEl = document.getElementById('rvtxt-' + cmtId);
+  if (!textEl) return;
+  const orig = textEl.dataset.orig || '';
+  textEl.innerHTML = escLines(orig);
+  delete textEl.dataset.orig;
 }
 
 /* ── 후기 댓글/답글 삭제 ── */
@@ -2536,10 +2679,39 @@ async function submitReview() {
 let curItem = null;
 let editingItemId = null;
 
+// 고민돼요 rows만 fetch해서 캐시에 저장 (renderDet에서 쓸 수 있도록)
+async function _fetchGomindRows(id) {
+  try {
+    const { data, error } = await sb
+      .from('item_gomindwae').select('user_key,user_name').eq('item_id', id);
+    if (curId !== id) return;
+    if (!error) {
+      _gomindRows = data || [];
+      _gomindHasNameCol = true;
+    } else {
+      const { data: d2 } = await sb
+        .from('item_gomindwae').select('user_key').eq('item_id', id);
+      if (curId !== id) return;
+      _gomindRows = (d2 || []).map(r => ({ ...r, user_name: null }));
+      _gomindHasNameCol = false;
+    }
+    _gomindLoaded = true;
+  } catch (e) { console.error('gomind rows fetch 실패', e); }
+}
+
 async function openDet(id) {
   curId = id;
   curItem = cachedItems.find(i => i.id === id);
   if (!curItem) curItem = { id, title: '상품', price: 0, category: '기타', emoji: '📦', seller_name: '', description: '' };
+
+  // 상품이 바뀌면 고민돼요 캐시 초기화
+  _gomindRows = [];
+  _gomindLoaded = false;
+  _gomindHasNameCol = false;
+
+  const own = curItem?.seller_name === myN;
+  // 고민돼요 fetch를 상품 데이터 fetch와 병렬로 시작
+  const gomindPromise = own ? Promise.resolve() : _fetchGomindRows(id);
 
   const hasFullPhotos = itemPhotoList(curItem.emoji).length && !isThumbOnlyPayload(curItem.emoji);
   const hasThumbs = itemThumbList(curItem.emoji).length > 0;
@@ -2563,7 +2735,11 @@ async function openDet(id) {
   }
 
   try {
-    const { data } = await sb.from('items').select('*').eq('id', id).single();
+    // 상품 상세 + 고민돼요를 병렬로 기다림 → renderDet() 호출 시 데이터 확보
+    const [{ data }] = await Promise.all([
+      sb.from('items').select('*').eq('id', id).single(),
+      gomindPromise,
+    ]);
     if (!data || curId !== id) return;
     const dataEmoji = itemRecordPayload(data) || data.emoji;
     const thumbs = itemThumbList(dataEmoji);
@@ -2576,7 +2752,7 @@ async function openDet(id) {
       commentCount: curItem?.commentCount || 0,
     };
     cachedItems = cachedItems.map(i => i.id === id ? { ...i, ...curItem } : i);
-    renderDet();
+    renderDet(); // 이 시점엔 _gomindRows 이미 채워져 있음 → 즉시 올바른 값 렌더
     fetchLikeCount(id).then(likeCount => {
       if (curId !== id || !curItem) return;
       curItem.likeCount = likeCount;
@@ -2644,10 +2820,24 @@ function renderDet() {
       <button class="resv-btn${it.reserved ? ' on' : ''}" id="_resvbtn" onclick="doToggleReserved()">예약중</button>
       <button class="edit-item-btn" onclick="renderSell(curItem);goTo('s-sell')">수정</button>
       <button class="del-item-btn" id="_delitem" onclick="doDeleteItem()">삭제</button>
-    </div>` : `<div class="det-reactions" id="_detReactions">
-      ${it.fcfs ? `<div class="det-fcfs-tag">⚡ 선착순 판매</div>` : ''}
-      <button class="gomind-btn" id="_gomindBtn" onclick="doToggleGomind()">🤔 고민돼요 <span id="_gomindCnt">...</span></button>
-    </div>`}
+    </div>` : (() => {
+      // _gomindRows 로컬 캐시에서 직접 렌더 — async 없이 즉시 올바른 값 표시
+      const gCnt  = _gomindRows.length;
+      const gMine = (_gomindHasNameCol && myN)
+        ? _gomindRows.some(r => r.user_name === myN || (!r.user_name && r.user_key === userKey))
+        : _gomindRows.some(r => r.user_key === userKey);
+      const gNames = (() => {
+        const ns = _gomindRows.map(r => r.user_name).filter(Boolean);
+        if (!ns.length) return '';
+        const show = ns.length > 5 ? ns.slice(0,5).join(', ') + ` 외 ${ns.length-5}명` : ns.join(', ');
+        return `${show}님이 고민 중이에요`;
+      })();
+      return `<div class="det-reactions" id="_detReactions">
+        ${it.fcfs ? `<div class="det-fcfs-tag">⚡ 선착순 판매</div>` : ''}
+        <button class="gomind-btn${gMine ? ' on' : ''}" id="_gomindBtn" onclick="doToggleGomind()">🤔 고민돼요 <span id="_gomindCnt">${gCnt}</span></button>
+        <div class="gomind-names" id="_gomindNames">${gNames}</div>
+      </div>`;
+    })()}
     <div class="cmt-wrap">
       <div class="cmt-head">댓글</div>
       <div class="cmt-form">
@@ -2664,7 +2854,7 @@ function renderDet() {
   });
 
   loadComments(it.id);
-  if (!own) { _gomindLoaded = false; loadGomind(); }
+  // 고민돼요 loadGomind()는 openDet()에서 병렬 fetch로 처리 — 여기서 호출 안 함
 }
 
 async function loadComments(itemId = curId, force = false) {
@@ -2858,41 +3048,108 @@ async function doToggleReserved() {
 }
 
 let _gomindLoaded = false;
+let _gomindRows = [];          // 로컬 캐시 — DB 왕복 없이 UI 업데이트에 사용
+let _gomindHasNameCol = false; // user_name 컬럼 존재 여부
+// ─── 고민돼요 DB 마이그레이션 (Supabase SQL 에디터에서 실행 필요) ───
+// ALTER TABLE item_gomindwae ADD COLUMN IF NOT EXISTS user_name text;
+// ALTER TABLE item_gomindwae DROP CONSTRAINT IF EXISTS item_gomindwae_item_id_user_key_key;
+// ALTER TABLE item_gomindwae ADD CONSTRAINT gomind_item_username_unique UNIQUE (item_id, user_name);
+
+// 로컬 캐시(_gomindRows)를 그대로 UI에 반영 — DB 재조회 없음 → 깜빡임 없음
+function _applyGomindUI() {
+  const rows = _gomindRows;
+  const cnt  = rows.length;
+  const isMine = (_gomindHasNameCol && myN)
+    ? rows.some(r => r.user_name === myN || (!r.user_name && r.user_key === userKey))
+    : rows.some(r => r.user_key === userKey);
+  const btn     = document.getElementById('_gomindBtn');
+  const cntEl   = document.getElementById('_gomindCnt');
+  const namesEl = document.getElementById('_gomindNames');
+  if (cntEl) cntEl.textContent = cnt;
+  if (btn)   btn.className = 'gomind-btn' + (isMine ? ' on' : '');
+  if (namesEl) {
+    const names = rows.map(r => r.user_name).filter(Boolean);
+    if (names.length) {
+      const show = names.length > 5
+        ? names.slice(0, 5).join(', ') + ` 외 ${names.length - 5}명`
+        : names.join(', ');
+      namesEl.textContent = `${show}님이 고민 중이에요`;
+    } else {
+      namesEl.textContent = '';
+    }
+  }
+}
+
+// 최초 진입 or 에러 후 재동기화 — DB에서 가져와 캐시 갱신
 async function loadGomind() {
   if (!curId) return;
   try {
-    const [cntResp, myResp] = await Promise.all([
-      sb.from('item_gomindwae').select('id', { count: 'exact', head: true }).eq('item_id', curId),
-      sb.from('item_gomindwae').select('id').eq('item_id', curId).eq('user_key', userKey).maybeSingle(),
-    ]);
-    const cnt = cntResp.count || 0;
-    const isMine = !!myResp.data;
-    const btn = document.getElementById('_gomindBtn');
-    const cntEl = document.getElementById('_gomindCnt');
-    if (cntEl) cntEl.textContent = cnt;
-    if (btn) btn.className = 'gomind-btn' + (isMine ? ' on' : '');
+    const { data: d1, error: e1 } = await sb
+      .from('item_gomindwae').select('user_key,user_name').eq('item_id', curId);
+    if (!e1) {
+      _gomindRows = d1 || [];
+      _gomindHasNameCol = true;
+    } else {
+      // user_name 컬럼 없음 → fallback
+      const { data: d2 } = await sb
+        .from('item_gomindwae').select('user_key').eq('item_id', curId);
+      _gomindRows = (d2 || []).map(r => ({ ...r, user_name: null }));
+      _gomindHasNameCol = false;
+    }
+    _applyGomindUI();
     _gomindLoaded = true;
-  } catch (e) { console.error('고민돼요 로드 실패', e); }
+  } catch (e) {
+    console.error('고민돼요 로드 실패', e);
+  }
 }
 
 let _gomindPending = false;
 async function doToggleGomind() {
   if (_gomindPending || !curId) return;
   _gomindPending = true;
-  const btn = document.getElementById('_gomindBtn');
-  const cntEl = document.getElementById('_gomindCnt');
+  const btn  = document.getElementById('_gomindBtn');
   const isOn = btn?.classList.contains('on');
+
+  // ① 로컬 캐시를 먼저 수정 → UI 즉시 반영 (한 번만 업데이트, 깜빡임 없음)
+  const prevRows = _gomindRows.slice(); // 에러 시 롤백용
+  if (isOn) {
+    // "내 항목"만 제거: user_name이 일치하면 제거, 없으면 user_key로 판별
+    // && 대신 OR 기반 isMyRow로 판별해야 같은 기기 다른 닉네임 항목이 삭제되지 않음
+    const isMyRow = r => (myN && r.user_name === myN) || (!r.user_name && r.user_key === userKey);
+    _gomindRows = _gomindRows.filter(r => !isMyRow(r));
+  } else {
+    _gomindRows = [..._gomindRows, { user_key: userKey, user_name: myN || null }];
+  }
+  _applyGomindUI(); // 딱 한 번만 호출
+
   try {
+    // ② DB 작업 (백그라운드)
     if (isOn) {
-      await sb.from('item_gomindwae').delete().eq('item_id', curId).eq('user_key', userKey);
-      if (btn) btn.className = 'gomind-btn';
-      if (cntEl) cntEl.textContent = Math.max(0, parseInt(cntEl.textContent || '0') - 1);
+      if (myN) {
+        const { error: de } = await sb.from('item_gomindwae').delete().eq('item_id', curId).eq('user_name', myN);
+        if (de) await sb.from('item_gomindwae').delete().eq('item_id', curId).eq('user_key', userKey);
+      } else {
+        await sb.from('item_gomindwae').delete().eq('item_id', curId).eq('user_key', userKey);
+      }
     } else {
-      await sb.from('item_gomindwae').insert({ item_id: curId, user_key: userKey });
-      if (btn) btn.className = 'gomind-btn on';
-      if (cntEl) cntEl.textContent = parseInt(cntEl.textContent || '0') + 1;
+      const { error: ie } = await sb.from('item_gomindwae').insert({
+        item_id: curId, user_key: userKey, user_name: myN || null,
+      });
+      if (ie) {
+        if (ie.code === '23505') {
+          // 이미 존재 — 캐시 재동기화
+          await loadGomind(); return;
+        }
+        // user_name 컬럼 없음 등 → user_key만으로 재시도
+        const { error: ie2 } = await sb.from('item_gomindwae').insert({ item_id: curId, user_key: userKey });
+        if (ie2 && ie2.code !== '23505') throw new Error(ie2.message);
+      }
     }
+    // DB 성공 → 이미 캐시가 반영된 상태, 추가 업데이트 불필요
   } catch (e) {
+    // ③ 에러 시 캐시 롤백 후 UI 복원
+    _gomindRows = prevRows;
+    _applyGomindUI();
     console.error('고민돼요 실패', e);
     toast('잠시 후 다시 시도해 주세요');
   } finally {
@@ -2971,6 +3228,18 @@ function renderNotifications() {
 async function openNotificationItem(itemId) {
   if (!itemId) {
     toast('상품 정보를 찾지 못했어요');
+    return;
+  }
+  // 후기 댓글/답글 알림: rv:reviewId 형태
+  if (String(itemId).startsWith('rv:')) {
+    const reviewId = itemId.slice(3);
+    goBack(); // 알림 화면 닫기
+    // 후기 탭으로 이동
+    statF = '후기';
+    await renderMain();
+    goTo('s-main');
+    await new Promise(r => setTimeout(r, 80)); // 탭 렌더 대기
+    openReviewDetail(reviewId);
     return;
   }
   await openDet(itemId);
@@ -3235,9 +3504,46 @@ document.addEventListener('input', e => {
 document.getElementById('app').addEventListener('click', e => {
   const hdr = e.target.closest('.hdr');
   if (!hdr) return;
+  // 로고는 logoTap()에서 처리 (stopPropagation으로 여기까지 오지 않음)
+  if (e.target.closest('.logo')) return;
   const active = document.querySelector('.screen.active');
   if (active) active.scrollTo({ top: 0, behavior: 'smooth' });
 });
+
+/* ── 업데이트 팝업 ── */
+const APP_VERSION = 'v2';
+const UPDATE_SEEN_KEY = 'gurogu_update_seen_';
+
+function showUpdatePopup() {
+  if (localStorage.getItem(UPDATE_SEEN_KEY + APP_VERSION)) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'update-overlay';
+  overlay.innerHTML = `
+    <div class="update-sheet">
+      <div class="update-badge">🐢 업데이트 안내 ${APP_VERSION}</div>
+      <div class="update-body">안녕하세요. 구로구마켓 주인장 <strong>윤듬듬🐢</strong> 입니다.<br><span style="display:inline-block;height:6px"></span><br>구로구마켓을 열렬히 이용해 주셔서 감사합니다.🙂‍↕️<br>소중한 피드백에 따라 신규 기능 추가, 그외 오류들 수정했습니다.</div>
+      <hr class="update-divider">
+      <div class="update-body"><strong>주요 업데이트 내역</strong>
+<div class="update-item">✅ <span><strong>선착순 판매</strong> — 상품 등록 시 선착순 옵션 설정 가능</span></div>
+<div class="update-item">✅ <span><strong>예약중</strong> — 내 상품에서 예약중 상태 표시 가능</span></div>
+<div class="update-item">✅ <span><strong>고민돼요</strong> — 고민돼요 기능 추가 및 누른 사람 표시</span></div>
+<div class="update-item">🔧 <span>그 외 자잘한 오류 개선</span></div></div>
+      <hr class="update-divider">
+      <div class="update-body" style="font-size:12px;color:var(--text3);line-height:1.55">불편하거나 추가하고 싶은 기능이 있으면 말씀해 주세요.<br>물건은 비우고 마음은 채우는 따뜻한 구로구마켓💚</div>
+      <button class="update-confirm" onclick="closeUpdatePopup()">확인했어요</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function closeUpdatePopup() {
+  try { localStorage.setItem(UPDATE_SEEN_KEY + APP_VERSION, '1'); } catch (_) {}
+  const overlay = document.querySelector('.update-overlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity .18s';
+    setTimeout(() => overlay.remove(), 180);
+  }
+}
 
 /* ── 시작 ── */
 if (myN) {
@@ -3246,6 +3552,7 @@ if (myN) {
   document.getElementById('s-nick').className = 'screen right';
   document.getElementById('s-main').className = 'screen active';
   screenHistory = ['s-main'];
+  setTimeout(showUpdatePopup, 600); // 메인 로딩 후 잠깐 딜레이
 } else {
   renderNick();
 }
