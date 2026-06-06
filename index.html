@@ -14,9 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="구로구마켓">
   <link rel="apple-touch-icon" href="/gurogu-market-logo.png">
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+  <!-- Web Push -->
   <style>
     /* ─── 리셋 & 기본 ─── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -427,7 +425,7 @@
 ════════════════════════════════ */
 const SUPABASE_URL = 'https://mgexlhhhtskpfiukzwae.supabase.co';
 const WORKER_URL = 'https://gurogu-upload.yhj6350.workers.dev';
-const FCM_VAPID_KEY = 'BMQow9quUcgEQQt93Zc8hfJnM1Shqgs6Q9QdrHmpqVavbPI_-EKr8pnA1DFIbgtMg9iV-72JbcO58GwPBUYgSRo';
+const VAPID_PUBLIC_KEY = 'BN7gnLGpLS46xq7m8CiktWlZ_utpBFEYtM4qZHLeVBALvE_dFMGGRWfI_74KbAf8WHm7Z_lzVSyX2XK8cbqTGVw';
 const SUPABASE_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
 
 /* ── Supabase 초기화 ── */
@@ -3424,43 +3422,24 @@ function saveNick() {
 
 let notificationTimer;
 /* ════════════════════════════════
-   🔔 FCM 푸시 알림
+   🔔 네이티브 Web Push (VAPID)
 ════════════════════════════════ */
-let _fcmMessaging = null;
-let _fcmSwReg = null;
+let _swReg = null;
 let _currentReviewAuthor = null; // 열려있는 후기 작성자
 
-async function initFCM() {
-  if (!('Notification' in window) || !navigator.serviceWorker) return;
+async function initWebPush() {
+  if (!('Notification' in window) || !navigator.serviceWorker || !('PushManager' in window)) return;
   try {
-    firebase.initializeApp({
-      apiKey: "AIzaSyDc46TCa2wL0K2IhXLF22Q4zvlpcidA_Oc",
-      authDomain: "gurogu-market.firebaseapp.com",
-      projectId: "gurogu-market",
-      storageBucket: "gurogu-market.firebasestorage.app",
-      messagingSenderId: "999150276391",
-      appId: "1:999150276391:web:59a86f1a0f6d63cbb72302"
-    });
-  } catch (e) { /* 이미 초기화된 경우 무시 */ }
-
-  try {
-    _fcmSwReg = await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready; // SW 완전 활성화 대기
-    _fcmMessaging = firebase.messaging();
-    // 앱이 열려있을 때도 알림 표시
-    _fcmMessaging.onMessage((payload) => {
-      const title = payload.notification?.title || '구로구마켓';
-      const body  = payload.notification?.body  || '';
-      if (_fcmSwReg) _fcmSwReg.showNotification(title, { body, icon: '/gurogu-market-logo.png' });
-    });
+    _swReg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
 
     if (Notification.permission === 'granted') {
-      await _saveFcmToken();
+      await _saveSubscription();
     } else if (Notification.permission === 'default') {
       setTimeout(_showNotiBanner, 2000);
     }
   } catch (e) {
-    console.warn('FCM 초기화 실패', e.message, e);
+    console.warn('Web Push 초기화 실패', e.message, e);
   }
 }
 
@@ -3479,26 +3458,34 @@ function _showNotiBanner() {
 }
 
 async function requestPushPermission() {
-  if (!_fcmMessaging) return;
-  if (Notification.permission === 'granted') { await _saveFcmToken(); return; }
+  if (!_swReg) return;
   if (Notification.permission === 'denied') { toast('설정에서 알림을 허용해주세요'); return; }
+  if (Notification.permission === 'granted') { await _saveSubscription(); return; }
   const perm = await Notification.requestPermission();
-  if (perm === 'granted') { await _saveFcmToken(); toast('알림이 설정됐어요 🔔'); }
+  if (perm === 'granted') { await _saveSubscription(); toast('알림이 설정됐어요 🔔'); }
 }
 
-async function _saveFcmToken() {
-  if (!_fcmMessaging || !myN) return;
+async function _saveSubscription() {
+  if (!_swReg || !myN) return;
   try {
-    const token = await _fcmMessaging.getToken({
-      vapidKey: FCM_VAPID_KEY,
-      serviceWorkerRegistration: _fcmSwReg,
+    // 이미 구독 중이면 기존 구독 사용, 없으면 새로 구독
+    let sub = await _swReg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await _swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: VAPID_PUBLIC_KEY,
+      });
+    }
+    const subJson = sub.toJSON();
+    const { error } = await sb.from('user_push_tokens').upsert({
+      user_name: myN,
+      subscription: subJson,
+      updated_at: new Date().toISOString(),
     });
-    if (!token) { console.warn('FCM 토큰 없음'); return; }
-    const { error } = await sb.from('user_push_tokens').upsert({ user_name: myN, token, updated_at: new Date().toISOString() });
-    if (error) console.warn('토큰 DB 저장 실패', error);
-    else console.log('✅ FCM 토큰 저장 완료');
+    if (error) console.warn('구독 저장 실패', error);
+    else console.log('✅ Web Push 구독 저장 완료');
   } catch (e) {
-    console.warn('FCM 토큰 저장 실패', e.message, e);
+    console.warn('Web Push 구독 실패', e.message, e);
   }
 }
 
@@ -3716,7 +3703,7 @@ if (myN) {
   document.getElementById('s-main').className = 'screen active';
   screenHistory = ['s-main'];
   setTimeout(showUpdatePopup, 600);
-  setTimeout(initFCM, 1500); // FCM 초기화 (렌더링 후 처리)
+  setTimeout(initWebPush, 1500); // Web Push 초기화 (렌더링 후 처리)
 } else {
   renderNick();
 }
