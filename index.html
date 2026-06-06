@@ -8,6 +8,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="구로구마켓">
+  <link rel="apple-touch-icon" href="/gurogu-market-logo.png">
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
   <style>
     /* ─── 리셋 & 기본 ─── */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -417,6 +426,8 @@
    ⚙️  여기에 Supabase 정보 입력
 ════════════════════════════════ */
 const SUPABASE_URL = 'https://mgexlhhhtskpfiukzwae.supabase.co';
+const WORKER_URL = 'https://gurogu-upload.yhj6350.workers.dev';
+const FCM_VAPID_KEY = 'BMQow9quUcgEQQt93Zc8hfJnM1Shqgs6Q9QdrHmpqVavbPI_-EKr8pnA1DFIbgtMg9iV-72JbcO58GwPBUYgSRo';
 const SUPABASE_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
 
 /* ── Supabase 초기화 ── */
@@ -1694,6 +1705,18 @@ async function insertComment(itemId, content, parentId = null) {
     item_id: itemId, parent_id: parentId,
     author_name: myN, author_photo: myP, content,
   });
+  // 푸시 알림
+  if (!parentId && curItem?.seller_name && curItem.seller_name !== myN) {
+    sendPushToUser(curItem.seller_name, '구로구마켓 💬 새 댓글', `${myN}: ${content.slice(0, 60)}`);
+  }
+  if (parentId) {
+    // 답글: 부모 댓글 작성자에게 알림
+    const parentEl = document.getElementById('cmt-' + parentId);
+    const parentAuthor = parentEl?.dataset?.author;
+    if (parentAuthor && parentAuthor !== myN) {
+      sendPushToUser(parentAuthor, '구로구마켓 💬 새 답글', `${myN}: ${content.slice(0, 60)}`);
+    }
+  }
 }
 
 async function updateComment(id, content) {
@@ -2175,6 +2198,7 @@ async function openReviewDetail(reviewId) {
     sb.from('review_likes').select('user_name').eq('review_id', reviewId),
   ]);
   const r = rvResp.data;
+  _currentReviewAuthor = r?.reviewer_name || r?.author_name || null;
   const allCmts = cmtsResp.data || [];
   const rvLikes = rvLikesResp.data || [];
   const rvLikeCount = rvLikes.length;
@@ -2319,6 +2343,10 @@ async function submitRvComment(reviewId) {
       list.insertAdjacentHTML('beforeend', rvCmtHtml(data, 0, false, [], reviewId));
       list.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
     }
+    // 푸시 알림 — 후기 작성자에게
+    if (_currentReviewAuthor && _currentReviewAuthor !== myN) {
+      sendPushToUser(_currentReviewAuthor, '구로구마켓 💬 후기 댓글', `${myN}: ${text.slice(0, 60)}`);
+    }
     // 카드 댓글 수 업데이트
     const card = document.querySelector(`[data-rid="${reviewId}"] .rv-act-btn:last-child span`);
     if (card) card.textContent = String(parseInt(card.textContent || '0') + 1);
@@ -2405,6 +2433,12 @@ async function submitRvReply(parentId, reviewId) {
     const form = document.getElementById('rvrepform-' + parentId);
     if (form) form.classList.remove('open');
     toast('답글을 남겼어요');
+    // 푸시 알림 — 부모 댓글 작성자에게
+    const parentCmtEl = document.getElementById('rvcmt-' + parentId);
+    const parentAuthor = parentCmtEl?.dataset?.author;
+    if (parentAuthor && parentAuthor !== myN) {
+      sendPushToUser(parentAuthor, '구로구마켓 💬 답글', `${myN}: ${text.slice(0, 60)}`);
+    }
   } catch (e) {
     console.error('답글 실패', e);
     toast('답글 등록에 실패했어요');
@@ -3389,6 +3423,72 @@ function saveNick() {
 }
 
 let notificationTimer;
+/* ════════════════════════════════
+   🔔 FCM 푸시 알림
+════════════════════════════════ */
+let _fcmMessaging = null;
+let _currentReviewAuthor = null; // 열려있는 후기 작성자
+
+async function initFCM() {
+  if (!('Notification' in window) || !navigator.serviceWorker) return;
+  try {
+    firebase.initializeApp({
+      apiKey: "AIzaSyDc46TCa2wL0K2IhXLF22Q4zvlpcidA_Oc",
+      authDomain: "gurogu-market.firebaseapp.com",
+      projectId: "gurogu-market",
+      storageBucket: "gurogu-market.firebasestorage.app",
+      messagingSenderId: "999150276391",
+      appId: "1:999150276391:web:59a86f1a0f6d63cbb72302"
+    });
+  } catch (e) { /* 이미 초기화된 경우 무시 */ }
+
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    _fcmMessaging = firebase.messaging();
+    _fcmMessaging.onMessage(() => {}); // 포그라운드 수신 (토스트로 이미 표시됨)
+
+    const perm = Notification.permission;
+    if (perm === 'granted') {
+      await _saveFcmToken();
+    } else if (perm === 'default') {
+      // 처음 방문 시 바로 물어보지 않고, 약간 딜레이 후 요청
+      setTimeout(requestPushPermission, 3000);
+    }
+  } catch (e) {
+    console.warn('FCM 초기화 실패', e);
+  }
+}
+
+async function requestPushPermission() {
+  if (!_fcmMessaging) return;
+  if (Notification.permission === 'granted') { await _saveFcmToken(); return; }
+  if (Notification.permission === 'denied') return;
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') await _saveFcmToken();
+}
+
+async function _saveFcmToken() {
+  if (!_fcmMessaging || !myN) return;
+  try {
+    const token = await _fcmMessaging.getToken({ vapidKey: FCM_VAPID_KEY });
+    if (!token) return;
+    await sb.from('user_push_tokens').upsert({ user_name: myN, token, updated_at: new Date().toISOString() });
+  } catch (e) {
+    console.warn('FCM 토큰 저장 실패', e);
+  }
+}
+
+async function sendPushToUser(recipientName, title, body) {
+  if (!recipientName || recipientName === myN) return; // 자기 자신에게는 안 보냄
+  try {
+    fetch(`${WORKER_URL}/push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientName, title, body }),
+    });
+  } catch (e) { /* 푸시 실패해도 앱 동작에 영향 없음 */ }
+}
+
 function startNotificationPolling() {
   clearInterval(notificationTimer);
   if (!myN) return;
@@ -3591,7 +3691,8 @@ if (myN) {
   document.getElementById('s-nick').className = 'screen right';
   document.getElementById('s-main').className = 'screen active';
   screenHistory = ['s-main'];
-  setTimeout(showUpdatePopup, 600); // 메인 로딩 후 잠깐 딜레이
+  setTimeout(showUpdatePopup, 600);
+  setTimeout(initFCM, 1500); // FCM 초기화 (렌더링 후 처리)
 } else {
   renderNick();
 }

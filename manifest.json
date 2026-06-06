@@ -1,0 +1,21 @@
+{
+  "name": "구로구마켓",
+  "short_name": "구로구마켓",
+  "description": "안 쓰는 물건에게 새 주인을 찾아주세요!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#D4537E",
+  "icons": [
+    {
+      "src": "/gurogu-market-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/gurogu-market-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
