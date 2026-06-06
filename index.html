@@ -3468,7 +3468,12 @@ async function requestPushPermission() {
 async function _saveSubscription() {
   if (!_swReg || !myN) return;
   try {
-    // 기존 구독 재사용 (없으면 새로 구독)
+    const cachedEp = localStorage.getItem('_push_ep');
+    // 처음이거나 캐시 없으면 → 기존 구독 해제 후 새로 구독 (VAPID 키 불일치 방지)
+    if (!cachedEp) {
+      const old = await _swReg.pushManager.getSubscription();
+      if (old) await old.unsubscribe();
+    }
     let sub = await _swReg.pushManager.getSubscription();
     if (!sub) {
       sub = await _swReg.pushManager.subscribe({
@@ -3478,7 +3483,7 @@ async function _saveSubscription() {
     }
     const subJson = sub.toJSON();
     // 이미 저장된 구독과 같으면 Supabase 저장 스킵
-    if (localStorage.getItem('_push_ep') === subJson.endpoint) {
+    if (cachedEp === subJson.endpoint) {
       console.log('✅ Web Push 구독 유지 중');
       return;
     }
