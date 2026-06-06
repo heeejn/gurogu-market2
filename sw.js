@@ -1,3 +1,7 @@
+// 설치 즉시 활성화 (구 Firebase SW 즉시 교체)
+self.addEventListener('install', (e) => e.waitUntil(self.skipWaiting()));
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+
 // 백그라운드 푸시 수신 (앱이 닫혀있을 때)
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
