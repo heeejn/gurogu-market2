@@ -3447,7 +3447,12 @@ async function initFCM() {
     _fcmSwReg = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready; // SW 완전 활성화 대기
     _fcmMessaging = firebase.messaging();
-    _fcmMessaging.onMessage(() => {});
+    // 앱이 열려있을 때도 알림 표시
+    _fcmMessaging.onMessage((payload) => {
+      const title = payload.notification?.title || '구로구마켓';
+      const body  = payload.notification?.body  || '';
+      if (_fcmSwReg) _fcmSwReg.showNotification(title, { body, icon: '/gurogu-market-logo.png' });
+    });
 
     if (Notification.permission === 'granted') {
       await _saveFcmToken();
