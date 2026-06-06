@@ -1247,13 +1247,21 @@ function dataUrlToBlob(dataUrl) {
 async function uploadImageDataUrl(dataUrl, folder = 'items') {
   if (isImgUrl(dataUrl)) return dataUrl;
   const blob = dataUrlToBlob(dataUrl);
-  const path = `${folder}/${userKey}/${Date.now()}-${crypto.randomUUID()}.jpg`;
-  const { error } = await sb.storage
-    .from('item-images')
-    .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
-  if (error) throw error;
-  const { data } = sb.storage.from('item-images').getPublicUrl(path);
-  return data.publicUrl;
+  const key = `${folder}/${userKey}/${Date.now()}-${crypto.randomUUID()}.jpg`;
+  const formData = new FormData();
+  formData.append('file', blob, 'image.jpg');
+  formData.append('key', key);
+  const res = await fetch('https://gurogu-upload.yhj6350.workers.dev', {
+    method: 'POST',
+    headers: { 'X-Upload-Token': 'gurogu2026' },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error('이미지 업로드 실패: ' + err);
+  }
+  const { url } = await res.json();
+  return url;
 }
 async function uploadItemImages(photos, thumbs) {
   const photoUrls = [];
