@@ -407,9 +407,10 @@
 <input type="file" id="f-edit" accept="image/*" style="display:none">
 <input type="file" id="f-item" accept="image/*" multiple style="display:none">
 
+<!-- 상태바 탭 → 맨 위로 스크롤 (iOS 시계/다이나믹아일랜드 영역) -->
+<div id="sb-tap" style="position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,20px);z-index:9999;cursor:pointer"></div>
+
 <div id="app">
-  <!-- 상태바 탭 → 맨 위로 스크롤 (iOS 시계/다이나믹아일랜드 영역) -->
-  <div id="sb-tap" style="position:absolute;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);z-index:9999;cursor:pointer"></div>
   <div id="ptr" class="ptr"><div class="spin"></div><span>새로고침</span></div>
   <div id="s-nick" class="screen active"></div>
   <div id="s-main" class="screen right"></div>
@@ -3003,7 +3004,7 @@ function cmtHTML(c, reps) {
   const isMine = c.author_name === myN;
   const isSeller = curItem && c.author_name === curItem.seller_name;
   commentTextMap.set(c.id, c.content || '');
-  return `<div class="cmt-item" id="cmt-${c.id}">
+  return `<div class="cmt-item" id="cmt-${c.id}" data-author="${esc(c.author_name)}">
     <div class="cmt-top">
       <div class="cmt-av">${av(c.author_photo, c.author_name, 22)}</div>
       <span class="cmt-nick">${esc(c.author_name)}</span>
@@ -3449,6 +3450,15 @@ async function initWebPush() {
   try {
     _swReg = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
+
+    // 새 SW가 활성화되면 앱 자동 새로고침 (배포 후 수동 새로고침 불필요)
+    let _refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_refreshing) return;
+      _refreshing = true;
+      toast('앱이 업데이트됐어요 🔄 새로고침합니다...');
+      setTimeout(() => location.reload(), 1200);
+    });
 
     if (Notification.permission === 'granted') {
       await _saveSubscription();
