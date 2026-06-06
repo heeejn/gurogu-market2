@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>구로구마켓</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
@@ -39,12 +39,12 @@
     .screen.right { transform: translateX(100%); }
     .screen.left  { transform: translateX(-100%); pointer-events: none; }
     .screen.active { transform: translateX(0); z-index: 10; }
-    .ptr { position: absolute; top: 0; left: 50%; transform: translate(-50%, -120%); z-index: 50; background: var(--surface); color: var(--pink-dark); border: .5px solid var(--pink-br); box-shadow: 0 6px 18px rgba(30,30,50,.08); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; transition: transform .18s ease; pointer-events: none; }
+    .ptr { position: absolute; top: env(safe-area-inset-top,0px); left: 50%; transform: translate(-50%, -120%); z-index: 50; background: var(--surface); color: var(--pink-dark); border: .5px solid var(--pink-br); box-shadow: 0 6px 18px rgba(30,30,50,.08); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; transition: transform .18s ease; pointer-events: none; }
     .ptr.show { transform: translate(-50%, 12px); }
     .ptr .spin { width: 14px; height: 14px; }
 
     /* ─── 헤더 ─── */
-    .hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
+    .hdr { height: calc(56px + env(safe-area-inset-top,0px)); box-sizing: border-box; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; justify-content: space-between; padding: env(safe-area-inset-top,0px) 14px 0; position: sticky; top: 0; z-index: 20; }
     .logo { display: flex; align-items: center; gap: 9px; }
     .logo-mark { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: #fff; display: flex; align-items: center; justify-content: center; }
     .logo-img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.38); display: block; }
@@ -58,7 +58,7 @@
     .pill-av img { width: 100%; height: 100%; object-fit: cover; }
 
     /* ─── 서브 헤더 ─── */
-    .sub-hdr { height: 56px; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; gap: 10px; padding: 0 14px; position: sticky; top: 0; z-index: 20; }
+    .sub-hdr { height: calc(56px + env(safe-area-inset-top,0px)); box-sizing: border-box; background: var(--surface); border-bottom: .5px solid var(--br); display: flex; align-items: center; gap: 10px; padding: env(safe-area-inset-top,0px) 14px 0; position: sticky; top: 0; z-index: 20; }
     .back-btn { width: 32px; height: 32px; background: var(--bg); border: .5px solid var(--br); border-radius: 999px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
     .sub-title { font-size: 15px; font-weight: 800; flex: 1; }
     .sub-right { display: flex; gap: 6px; }
@@ -77,7 +77,7 @@
     .filter-bar::-webkit-scrollbar { display: none; }
     .chip { min-height: 36px; min-width: max-content; padding: 0 12px; border-radius: 999px; border: .5px solid var(--br); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1; flex: 0 0 auto; }
     .chip.on { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
-    .stat-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); }
+    .stat-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); position: sticky; top: calc(56px + env(safe-area-inset-top,0px)); z-index: 15; }
     .stab { flex: 1; text-align: center; padding: 9px 0; font-size: 13px; font-weight: 700; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; -webkit-tap-highlight-color: transparent; }
     .stab.on { color: var(--pink-dark); border-bottom-color: var(--pink); }
 
@@ -408,6 +408,8 @@
 <input type="file" id="f-item" accept="image/*" multiple style="display:none">
 
 <div id="app">
+  <!-- 상태바 탭 → 맨 위로 스크롤 (iOS 시계/다이나믹아일랜드 영역) -->
+  <div id="sb-tap" style="position:absolute;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);z-index:9999;cursor:pointer"></div>
   <div id="ptr" class="ptr"><div class="spin"></div><span>새로고침</span></div>
   <div id="s-nick" class="screen active"></div>
   <div id="s-main" class="screen right"></div>
@@ -924,6 +926,9 @@ async function refreshActiveScreen() {
       await loadComments(id, true);
       if (curId === id) await openDet(id);
     }
+    // 완료 표시를 1초간 보여준 뒤 숨김
+    setPullRefresh(true, '✓ 완료');
+    await new Promise(r => setTimeout(r, 900));
   } finally {
     ptrRefreshing = false;
     setPullRefresh(false);
@@ -1193,13 +1198,25 @@ document.getElementById('app').addEventListener('touchmove', e => {
 }, { passive: true });
 
 document.getElementById('app').addEventListener('touchend', e => {
-  if (!ptrPulling || ptrRefreshing) return;
+  if (ptrRefreshing) { ptrPulling = false; return; }
+  if (!ptrPulling) { setPullRefresh(false); return; }
   ptrPulling = false;
   const dx = Math.abs((e.changedTouches[0]?.clientX || 0) - ptrStartX);
   const dy = (e.changedTouches[0]?.clientY || 0) - ptrStartY;
-  if (dy > 72 && dx < 28) refreshActiveScreen();
+  if (dy > 60 && dx < 28) refreshActiveScreen();
   else setPullRefresh(false);
 }, { passive: true });
+
+document.getElementById('app').addEventListener('touchcancel', () => {
+  ptrPulling = false;
+  setPullRefresh(false);
+}, { passive: true });
+
+/* ── 상태바(시계/다이나믹아일랜드) 탭 → 맨 위로 스크롤 ── */
+document.getElementById('sb-tap').addEventListener('click', () => {
+  const active = activeScreenEl();
+  if (active) active.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 /* ── 파일 업로드 → Base64 ── */
 function readFile(file) {
