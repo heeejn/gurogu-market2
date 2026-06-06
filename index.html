@@ -3484,9 +3484,10 @@ async function _saveSubscription() {
     }
     const { error } = await sb.from('user_push_tokens').upsert({
       user_name: myN,
+      endpoint: subJson.endpoint,
       subscription: subJson,
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'user_name,endpoint' });
     if (error) console.warn('구독 저장 실패', error);
     else {
       localStorage.setItem('_push_ep', subJson.endpoint);

@@ -95,19 +95,17 @@ export default {
           { headers: { apikey: SUPA_KEY, authorization: `Bearer ${SUPA_KEY}` } }
         );
         const rows = await tokenRes.json();
-        if (!rows?.length || !rows[0]?.subscription)
+        const subs = rows?.filter(r => r.subscription);
+        if (!subs?.length)
           return new Response(JSON.stringify({ skipped: 'no subscription' }), { headers: { 'Content-Type': 'application/json', ...CORS } });
 
-        const subscription = rows[0].subscription;
         const payload = JSON.stringify({ title, body: body || '' });
-        const pushRes = await sendWebPush(subscription, payload);
-        let pushBody = '';
-        try { pushBody = await pushRes.text(); } catch (_) {}
-        return new Response(JSON.stringify({
-          status: pushRes.status,
-          detail: pushBody,
-          endpoint: subscription.endpoint ? subscription.endpoint.slice(0, 60) : 'none',
-        }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+        // 사용자의 모든 기기에 전송
+        const results = await Promise.allSettled(
+          subs.map(r => sendWebPush(r.subscription, payload).then(res => res.status).catch(e => `err:${e.message}`))
+        );
+        const statuses = results.map(r => r.value ?? r.reason);
+        return new Response(JSON.stringify({ sent: subs.length, statuses }), { headers: { 'Content-Type': 'application/json', ...CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } });
       }
