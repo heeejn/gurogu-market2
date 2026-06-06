@@ -1329,27 +1329,7 @@ async function restRows(path, ms = 6000) {
   }
 }
 
-async function fetchItems() {
-  const columnSets = [
-    'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls',
-    'id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls',
-    'id,title,price,category,description,seller_name,sold,created_at,thumbnail_url,photo_urls',
-    'id,title,price,category,description,seller_name,sold,created_at',
-  ];
-  let data = null;
-  let error = null;
-
-  for (const columns of columnSets) {
-    const res = await restRows(`items?select=${encodeURIComponent(columns)}&limit=200`, 20000);
-    data = res.data;
-    error = res.error;
-    if (!error) break;
-    if (error.name === 'AbortError') break; // 네트워크 타임아웃 → 더 단순한 컬럼셋 재시도 의미 없음
-    if (error.code !== '42703') break;
-    console.warn('일부 컬럼이 없어 더 기본 형태로 상품을 불러옵니다.', error);
-  }
-
-  if (error) { console.error(JSON.stringify(error)); return null; }
+function _processItems(data) {
   return data
     .filter(i => i.description !== DELETED_MARK)
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
@@ -1360,6 +1340,38 @@ async function fetchItems() {
       likeCount: i.likeCount || 0,
       commentCount: i.commentCount || 0,
     }));
+}
+
+async function fetchItems() {
+  // 1. Cloudflare Worker 캐시 (빠름 — 45초 캐싱)
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 7000);
+    const res = await fetch('https://gurogu-upload.yhj6350.workers.dev/items', { signal: ctrl.signal });
+    clearTimeout(t);
+    if (res.ok) return _processItems(await res.json());
+  } catch (e) {
+    console.warn('Worker 캐시 실패, Supabase 직접 연결로 전환', e.message);
+  }
+
+  // 2. 직접 Supabase (fallback)
+  const columnSets = [
+    'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls',
+    'id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls',
+    'id,title,price,category,description,seller_name,sold,created_at,thumbnail_url,photo_urls',
+    'id,title,price,category,description,seller_name,sold,created_at',
+  ];
+  let data = null, error = null;
+  for (const columns of columnSets) {
+    const res = await restRows(`items?select=${encodeURIComponent(columns)}&limit=200`, 20000);
+    data = res.data; error = res.error;
+    if (!error) break;
+    if (error.name === 'AbortError') break;
+    if (error.code !== '42703') break;
+    console.warn('일부 컬럼이 없어 더 기본 형태로 상품을 불러옵니다.', error);
+  }
+  if (error) { console.error(JSON.stringify(error)); return null; }
+  return _processItems(data);
 }
 
 function withTimeout(promise, ms, fallback = null) {
