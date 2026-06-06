@@ -3443,28 +3443,41 @@ async function initFCM() {
   } catch (e) { /* 이미 초기화된 경우 무시 */ }
 
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.register('/sw.js');
     _fcmMessaging = firebase.messaging();
-    _fcmMessaging.onMessage(() => {}); // 포그라운드 수신 (토스트로 이미 표시됨)
+    _fcmMessaging.onMessage(() => {});
 
-    const perm = Notification.permission;
-    if (perm === 'granted') {
+    if (Notification.permission === 'granted') {
       await _saveFcmToken();
-    } else if (perm === 'default') {
-      // 처음 방문 시 바로 물어보지 않고, 약간 딜레이 후 요청
-      setTimeout(requestPushPermission, 3000);
+    } else if (Notification.permission === 'default') {
+      // iOS는 반드시 사용자 직접 클릭이 필요 → 배너 표시
+      setTimeout(_showNotiBanner, 2000);
     }
   } catch (e) {
     console.warn('FCM 초기화 실패', e);
   }
 }
 
+function _showNotiBanner() {
+  const KEY = 'gurogu_noti_asked';
+  if (localStorage.getItem(KEY) || Notification.permission !== 'default') return;
+  const el = document.createElement('div');
+  el.id = '_notiBanner';
+  el.innerHTML = `<div style="position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:var(--surface);border:.5px solid var(--br2);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:10px;z-index:1200;box-shadow:0 4px 24px rgba(0,0,0,.13);max-width:340px;width:calc(100% - 32px)">
+    <span style="font-size:20px;flex-shrink:0">🔔</span>
+    <div style="flex:1;font-size:12px;color:var(--text2);line-height:1.45">댓글·답글 알림을 받으시겠어요?</div>
+    <button onclick="requestPushPermission();this.closest('#_notiBanner').remove();localStorage.setItem('gurogu_noti_asked','1')" style="background:var(--pink);color:#fff;border:none;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">허용</button>
+    <button onclick="this.closest('#_notiBanner').remove();localStorage.setItem('gurogu_noti_asked','1')" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:2px;line-height:1">×</button>
+  </div>`;
+  document.body.appendChild(el);
+}
+
 async function requestPushPermission() {
   if (!_fcmMessaging) return;
   if (Notification.permission === 'granted') { await _saveFcmToken(); return; }
-  if (Notification.permission === 'denied') return;
+  if (Notification.permission === 'denied') { toast('설정에서 알림을 허용해주세요'); return; }
   const perm = await Notification.requestPermission();
-  if (perm === 'granted') await _saveFcmToken();
+  if (perm === 'granted') { await _saveFcmToken(); toast('알림이 설정됐어요 🔔'); }
 }
 
 async function _saveFcmToken() {
