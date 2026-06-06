@@ -3588,6 +3588,12 @@ async function doAddItem() {
 	      fcfs,
 	    });
 	    toast('상품이 등록됐어요 🎉');
+    // 전체 구독자에게 새 상품 알림 전송
+    fetch(`${WORKER_URL}/push-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderName: myN, title: `구로구마켓 🛍 새 상품`, body: `${myN}: ${t}` }),
+    }).catch(() => {});
     statF = '판매중'; catF = '전체';
     try { localStorage.setItem('gurogu_statF', '판매중'); localStorage.setItem('gurogu_catF', '전체'); } catch (e) {}
     goBack();

@@ -26,7 +26,12 @@ export default {
       const cacheKey = new Request('https://gurogu-cache.internal/items-v1');
       const cache = caches.default;
       const hit = await cache.match(cacheKey);
-      if (hit) return new Response(hit.body, { ...hit, headers: { ...Object.fromEntries(hit.headers), 'X-Cache': 'HIT', ...CORS } });
+      if (hit) {
+        const headers = new Headers(hit.headers);
+        headers.set('X-Cache', 'HIT');
+        Object.entries(CORS).forEach(([k, v]) => headers.set(k, v));
+        return new Response(hit.body, { status: hit.status, headers });
+      }
 
       const cols = 'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls';
       const supaRes = await fetch(
@@ -40,6 +45,36 @@ export default {
       });
       if (supaRes.ok) ctx.waitUntil(cache.put(cacheKey, res.clone()));
       return res;
+    }
+
+    // ── POST /push-all → 전체 구독자에게 알림 (새 상품 등록 등) ──
+    if (pathname === '/push-all' && request.method === 'POST') {
+      try {
+        const { senderName, title, body } = await request.json();
+        if (!senderName || !title)
+          return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+
+        // 구독 정보가 있는 전체 사용자 조회
+        const allRes = await fetch(
+          `${SUPA_URL}/rest/v1/user_push_tokens?subscription=not.is.null&select=user_name,subscription`,
+          { headers: { apikey: SUPA_KEY, authorization: `Bearer ${SUPA_KEY}` } }
+        );
+        const rows = await allRes.json();
+        if (!rows?.length)
+          return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+
+        const payload = JSON.stringify({ title, body: body || '' });
+        const targets = rows.filter(r => r.user_name !== senderName);
+
+        // 백그라운드에서 병렬 전송
+        ctx.waitUntil(Promise.allSettled(
+          targets.map(r => sendWebPush(r.subscription, payload).catch(() => {}))
+        ));
+
+        return new Response(JSON.stringify({ sent: targets.length }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } });
+      }
     }
 
     // ── POST /push → 네이티브 Web Push 알림 전송 ──
@@ -61,7 +96,13 @@ export default {
         const subscription = rows[0].subscription;
         const payload = JSON.stringify({ title, body: body || '' });
         const pushRes = await sendWebPush(subscription, payload);
-        return new Response(JSON.stringify({ status: pushRes.status }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+        let pushBody = '';
+        try { pushBody = await pushRes.text(); } catch (_) {}
+        return new Response(JSON.stringify({
+          status: pushRes.status,
+          detail: pushBody,
+          endpoint: subscription.endpoint ? subscription.endpoint.slice(0, 60) : 'none',
+        }), { headers: { 'Content-Type': 'application/json', ...CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } });
       }
