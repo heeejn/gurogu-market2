@@ -3468,14 +3468,13 @@ async function requestPushPermission() {
 async function _saveSubscription() {
   if (!_swReg || !myN) return;
   try {
-    // 이미 구독 중이면 기존 구독 사용, 없으면 새로 구독
-    let sub = await _swReg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await _swReg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: VAPID_PUBLIC_KEY,
-      });
-    }
+    // 기존 구독 해제 후 새로 구독 (VAPID 키 변경 대응)
+    const existing = await _swReg.pushManager.getSubscription();
+    if (existing) await existing.unsubscribe();
+    const sub = await _swReg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: VAPID_PUBLIC_KEY,
+    });
     const subJson = sub.toJSON();
     const { error } = await sb.from('user_push_tokens').upsert({
       user_name: myN,
