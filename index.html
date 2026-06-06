@@ -407,9 +407,6 @@
 <input type="file" id="f-edit" accept="image/*" style="display:none">
 <input type="file" id="f-item" accept="image/*" multiple style="display:none">
 
-<!-- 상태바 탭 → 맨 위로 스크롤 (iOS 시계/다이나믹아일랜드 영역) -->
-<div id="sb-tap" style="position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,20px);z-index:9999;cursor:pointer"></div>
-
 <div id="app">
   <div id="ptr" class="ptr"><div class="spin"></div><span>새로고침</span></div>
   <div id="s-nick" class="screen active"></div>
@@ -1213,11 +1210,32 @@ document.getElementById('app').addEventListener('touchcancel', () => {
   setPullRefresh(false);
 }, { passive: true });
 
-/* ── 상태바(시계/다이나믹아일랜드) 탭 → 맨 위로 스크롤 ── */
-document.getElementById('sb-tap').addEventListener('click', () => {
-  const active = activeScreenEl();
-  if (active) active.scrollTo({ top: 0, behavior: 'smooth' });
-});
+/* ── 상태바(Dynamic Island / 시계 영역) 탭 → 맨 위로 스크롤 ──
+   iOS에서 click 이벤트는 status bar 영역에서 불안정하므로
+   document 레벨 touchstart/touchend 로 직접 감지한다.         */
+(function () {
+  let _t0 = 0, _y0 = -1;
+  document.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) { _y0 = -1; return; }
+    const y = e.touches[0].clientY;
+    // Dynamic Island 모델 ~59px, 노치 모델 ~47px 를 커버하도록 64px
+    if (y > 64) { _y0 = -1; return; }
+    // 버튼·링크·입력창 위를 탭할 때는 발동 안 함
+    if (e.target.closest('button,a,input,textarea,select,[onclick]')) { _y0 = -1; return; }
+    _t0 = Date.now(); _y0 = y;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (_y0 < 0) return;
+    const t = e.changedTouches[0];
+    const moved = Math.abs(t.clientY - _y0);
+    const elapsed = Date.now() - _t0;
+    _y0 = -1;
+    if (moved < 20 && elapsed < 500) {          // 빠른 탭 판정
+      const active = activeScreenEl();
+      if (active) active.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, { passive: true });
+}());
 
 /* ── 파일 업로드 → Base64 ── */
 function readFile(file) {
@@ -2322,7 +2340,7 @@ function rvCmtHtml(c, likeCount = 0, iLiked = false, replies = [], reviewId = ''
       <button class="rv-cmt-rep-post" onclick="submitRvReply('${c.id}','${reviewId}')">등록</button>
     </div>`;
 
-  return `<div class="rv-cmt-item" id="rvcmt-${c.id}">
+  return `<div class="rv-cmt-item" id="rvcmt-${c.id}" data-author="${esc(c.author_name)}">
     <div class="rv-cmt-av">${av(c.author_photo || '', c.author_name, 26)}</div>
     <div class="rv-cmt-bubble">
       <div class="rv-cmt-name">${esc(c.author_name)}</div>
