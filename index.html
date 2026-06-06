@@ -3427,6 +3427,7 @@ let notificationTimer;
    🔔 FCM 푸시 알림
 ════════════════════════════════ */
 let _fcmMessaging = null;
+let _fcmSwReg = null;
 let _currentReviewAuthor = null; // 열려있는 후기 작성자
 
 async function initFCM() {
@@ -3443,18 +3444,18 @@ async function initFCM() {
   } catch (e) { /* 이미 초기화된 경우 무시 */ }
 
   try {
-    await navigator.serviceWorker.register('/sw.js');
+    _fcmSwReg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready; // SW 완전 활성화 대기
     _fcmMessaging = firebase.messaging();
     _fcmMessaging.onMessage(() => {});
 
     if (Notification.permission === 'granted') {
       await _saveFcmToken();
     } else if (Notification.permission === 'default') {
-      // iOS는 반드시 사용자 직접 클릭이 필요 → 배너 표시
       setTimeout(_showNotiBanner, 2000);
     }
   } catch (e) {
-    console.warn('FCM 초기화 실패', e);
+    console.warn('FCM 초기화 실패', e.message, e);
   }
 }
 
@@ -3483,11 +3484,16 @@ async function requestPushPermission() {
 async function _saveFcmToken() {
   if (!_fcmMessaging || !myN) return;
   try {
-    const token = await _fcmMessaging.getToken({ vapidKey: FCM_VAPID_KEY });
-    if (!token) return;
-    await sb.from('user_push_tokens').upsert({ user_name: myN, token, updated_at: new Date().toISOString() });
+    const token = await _fcmMessaging.getToken({
+      vapidKey: FCM_VAPID_KEY,
+      serviceWorkerRegistration: _fcmSwReg,
+    });
+    if (!token) { console.warn('FCM 토큰 없음'); return; }
+    const { error } = await sb.from('user_push_tokens').upsert({ user_name: myN, token, updated_at: new Date().toISOString() });
+    if (error) console.warn('토큰 DB 저장 실패', error);
+    else console.log('✅ FCM 토큰 저장 완료');
   } catch (e) {
-    console.warn('FCM 토큰 저장 실패', e);
+    console.warn('FCM 토큰 저장 실패', e.message, e);
   }
 }
 
