@@ -65,13 +65,18 @@ export default {
 
         const payload = JSON.stringify({ title, body: body || '' });
         const targets = rows.filter(r => r.user_name !== senderName);
+        if (!targets.length)
+          return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json', ...CORS } });
 
-        // 백그라운드에서 병렬 전송
-        ctx.waitUntil(Promise.allSettled(
-          targets.map(r => sendWebPush(r.subscription, payload).catch(() => {}))
-        ));
-
-        return new Response(JSON.stringify({ sent: targets.length }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+        // 병렬 전송 후 결과 반환
+        const results = await Promise.allSettled(
+          targets.map(r => sendWebPush(r.subscription, payload)
+            .then(res => res.status)
+            .catch(e => `err:${e.message}`)
+          )
+        );
+        const statuses = results.map(r => r.value ?? r.reason);
+        return new Response(JSON.stringify({ sent: targets.length, statuses }), { headers: { 'Content-Type': 'application/json', ...CORS } });
       } catch (e) {
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } });
       }
