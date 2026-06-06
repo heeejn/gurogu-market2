@@ -1729,7 +1729,23 @@ async function startApp() {
 /* ════════════════════════════════
    메인 화면
 ════════════════════════════════ */
-let cachedItems = [];
+const _ITEMS_CACHE_KEY = 'gurogu_items_v1';
+function _loadItemsCache() {
+  try {
+    const raw = localStorage.getItem(_ITEMS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+function _saveItemsCache(items) {
+  try {
+    // description 제외하고 저장 (용량 절약)
+    const slim = items.slice(0, 150).map(({ description, ...rest }) => rest);
+    localStorage.setItem(_ITEMS_CACHE_KEY, JSON.stringify(slim));
+  } catch { }
+}
+let cachedItems = _loadItemsCache();
 let likedItemIds = new Set();
 let likedItemIdsReady = false;
 let titleToSellerMap = {};  // 상품 제목 → 판매자 닉네임 (후기에서 판매자 표시용)
@@ -1794,7 +1810,10 @@ async function renderMain(q) {
       items = await fetchItems();
     }
 
-    if (items) cachedItems = mergeFetchedItems(items);
+    if (items) {
+      cachedItems = mergeFetchedItems(items);
+      _saveItemsCache(cachedItems); // 로컬 캐시 저장
+    }
     // fetch 완료 후 현재 탭이 판매중/판매완료면 렌더 (탭 전환 후 완료되는 경우 포함)
     if (statF !== '후기') {
       renderMainList(q, false);
