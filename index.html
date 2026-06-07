@@ -36,10 +36,11 @@
     #app { width: 100%; max-width: 430px; height: 100dvh; margin: 0 auto; position: relative; overflow: hidden; background: var(--bg); }
 
     /* ─── 화면 전환 ─── */
-    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; z-index: 1; }
+    .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: hidden; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; z-index: 1; }
     .screen.right { transform: translateX(100%); }
     .screen.left  { transform: translateX(-100%); pointer-events: none; }
-    .screen.active { transform: translateX(0); z-index: 10; }
+    /* 활성 화면만 스크롤 가능 → iOS UIScrollView가 하나만 존재 → status bar tap scroll-to-top 정상 작동 */
+    .screen.active { transform: translateX(0); z-index: 10; overflow-y: auto; }
     .ptr { position: absolute; top: env(safe-area-inset-top,0px); left: 50%; transform: translate(-50%, -120%); z-index: 50; background: var(--surface); color: var(--pink-dark); border: .5px solid var(--pink-br); box-shadow: 0 6px 18px rgba(30,30,50,.08); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; transition: transform .18s ease; pointer-events: none; }
     .ptr.show { transform: translate(-50%, 12px); }
     .ptr .spin { width: 14px; height: 14px; }
