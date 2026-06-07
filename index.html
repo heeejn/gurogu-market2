@@ -29,7 +29,10 @@
       --br: #E8EAF0; --br2: #D0D5E8;
       --r: 14px;
     }
-    html, body { height: 100%; overflow: hidden; }
+    /* html을 1px 스크롤 가능하게 → status bar tap 시 scrollY 0으로 → scroll 이벤트로 감지 */
+    html { height: calc(100% + 1px); overflow-y: scroll; overscroll-behavior-y: none; scrollbar-width: none; }
+    html::-webkit-scrollbar { display: none; }
+    body { height: 100%; overflow: hidden; }
     body { font-family: 'Nanum Gothic', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
 
     /* ─── 앱 래퍼 ─── */
@@ -39,8 +42,8 @@
     .screen { position: absolute; inset: 0; background: var(--bg); overflow-y: hidden; -webkit-overflow-scrolling: touch; transition: transform .3s cubic-bezier(.32,.72,0,1); will-change: transform; z-index: 1; }
     .screen.right { transform: translateX(100%); }
     .screen.left  { transform: translateX(-100%); pointer-events: none; }
-    /* 활성 화면만 스크롤 가능 → iOS UIScrollView가 하나만 존재 → status bar tap scroll-to-top 정상 작동 */
-    .screen.active { transform: translateX(0); z-index: 10; overflow-y: auto; }
+    /* 활성 화면만 스크롤 가능 → iOS UIScrollView가 하나만 존재 */
+    .screen.active { transform: translateX(0); z-index: 10; overflow-y: auto; overscroll-behavior-y: contain; }
     .ptr { position: absolute; top: env(safe-area-inset-top,0px); left: 50%; transform: translate(-50%, -120%); z-index: 50; background: var(--surface); color: var(--pink-dark); border: .5px solid var(--pink-br); box-shadow: 0 6px 18px rgba(30,30,50,.08); border-radius: 999px; padding: 8px 13px; font-size: 12px; font-weight: 800; display: flex; align-items: center; gap: 6px; transition: transform .18s ease; pointer-events: none; }
     .ptr.show { transform: translate(-50%, 12px); }
     .ptr .spin { width: 14px; height: 14px; }
@@ -1213,50 +1216,24 @@ document.getElementById('app').addEventListener('touchcancel', () => {
 }, { passive: true });
 
 /* ── 상태바(Dynamic Island / 시계 영역) 탭 → 맨 위로 스크롤 ──
-   CSS --sat 변수로 실제 safe-area-inset-top 픽셀값을 읽어 정확히 감지한다.
-   방법1: document touchstart/touchend 로 Y좌표 감지
-   방법2: .hdr의 padding-top(= SAT) 영역에서 touchend 감지 (이중 보험)  */
+   Safari와 동일한 원리: html을 1px 스크롤 가능하게 유지하고
+   status bar tap → window.scrollY 가 0이 되는 순간 scroll 이벤트로 감지. */
 (function () {
-  function scrollToTop() {
+  // html 스크롤을 항상 1px로 유지 (status bar tap 시 0으로 떨어지는 것 감지)
+  function _initScroll() { window.scrollTo(0, 1); }
+  requestAnimationFrame(_initScroll);
+
+  let _busy = false;
+  window.addEventListener('scroll', function () {
+    if (_busy || window.scrollY >= 1) return;
+    // scrollY가 0이 됐다 = status bar 탭
     const active = activeScreenEl();
     if (active) active.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  function getSAT() {
-    // CSS --sat = env(safe-area-inset-top, 0px) 의 실제 픽셀값
-    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sat')) || 0;
-  }
-
-  /* ▼ 방법1: document 전체에서 상단 터치 감지 */
-  let _t0 = 0, _y0 = -1;
-  document.addEventListener('touchstart', function (e) {
-    if (e.touches.length !== 1) { _y0 = -1; return; }
-    const y = e.touches[0].clientY;
-    const sat = getSAT();
-    // SAT가 0이면(구형 폰) 발동 안 함, SAT+4 이하면 상태바 영역
-    if (sat <= 0 || y > sat + 4) { _y0 = -1; return; }
-    // 버튼·링크·입력창은 제외
-    if (e.target.closest('button,a,input,textarea,select')) { _y0 = -1; return; }
-    _t0 = Date.now(); _y0 = y;
-  }, { passive: true });
-  document.addEventListener('touchend', function (e) {
-    if (_y0 < 0) return;
-    const moved = Math.abs(e.changedTouches[0].clientY - _y0);
-    const elapsed = Date.now() - _t0;
-    _y0 = -1;
-    if (moved < 30 && elapsed < 600) scrollToTop();
-  }, { passive: true });
-
-  /* ▼ 방법2: .hdr의 padding(safe-area) 영역 touchend 이중 보험 */
-  document.getElementById('app').addEventListener('touchend', function (e) {
-    const hdr = e.target.closest('.hdr,.sub-hdr');
-    if (!hdr) return;
-    // 헤더의 paddingTop = env(safe-area-inset-top) 픽셀값
-    const pt = parseFloat(getComputedStyle(hdr).paddingTop) || 0;
-    if (pt <= 0) return;
-    const ty = e.changedTouches[0].clientY;
-    const hdrTop = hdr.getBoundingClientRect().top;
-    // 터치 Y가 헤더 패딩(상태바) 영역 이내인 경우
-    if (ty < hdrTop + pt + 4) scrollToTop();
+    _busy = true;
+    requestAnimationFrame(function () {
+      window.scrollTo(0, 1);          // 1px로 복원
+      requestAnimationFrame(function () { _busy = false; });
+    });
   }, { passive: true });
 }());
 
