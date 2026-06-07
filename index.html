@@ -1646,12 +1646,12 @@ async function fetchComments(itemId) {
 }
 
 async function insertItem({ title, price, category, emoji, description, photoUrls = [], thumbnailUrl = '', fcfs = false }) {
-  let { error } = await sb.from('items').insert({
+  let { data: newRow, error } = await sb.from('items').insert({
     title, price, category, emoji, description, fcfs,
     photo_urls: photoUrls,
     thumbnail_url: thumbnailUrl || null,
     seller_name: myN, seller_photo: myP,
-  });
+  }).select('*').single();
   if (error?.code === '42703') {
     console.warn('Storage URL 컬럼이 없어 기존 emoji 방식으로 저장합니다.', error);
     const fallback = await sb.from('items').insert({
@@ -1659,10 +1659,12 @@ async function insertItem({ title, price, category, emoji, description, photoUrl
       emoji: itemPayload(itemPhotos, category, itemThumbs),
       description,
       seller_name: myN, seller_photo: myP,
-    });
+    }).select('*').single();
     error = fallback.error;
+    newRow = fallback.data;
   }
   if (error) throw error;
+  return newRow;
 }
 
 async function updateItem(id, { title, price, category, emoji, description, photoUrls = [], thumbnailUrl = '', fcfs = false }) {
@@ -3688,7 +3690,7 @@ async function doAddItem() {
 	  btn.textContent = '등록 중...'; btn.disabled = true;
 	  try {
 	    const uploaded = await uploadItemImages(itemPhotos, itemThumbs);
-	    await insertItem({
+	    const newItem = await insertItem({
 	      title: t, price: p, category: c, description: d,
 	      emoji: emM[c] || '📦',
 	      photoUrls: uploaded.photoUrls,
@@ -3704,8 +3706,13 @@ async function doAddItem() {
     }).catch(() => {});
     statF = '판매중'; catF = '전체';
     try { localStorage.setItem('gurogu_statF', '판매중'); localStorage.setItem('gurogu_catF', '전체'); } catch (e) {}
+    // Worker 캐시 만료 전에도 즉시 반영 — 새 아이템을 캐시 맨 앞에 추가
+    if (newItem) {
+      cachedItems = [{ ...newItem, likeCount: 0, commentCount: 0 }, ...cachedItems];
+      _saveItemsCache(cachedItems);
+    }
     goBack();
-    await renderMain('');
+    renderMainList('');
   } catch (e) {
     toast('등록에 실패했어요. 다시 시도해 주세요.');
     btn.textContent = '등록하기'; btn.disabled = false;
