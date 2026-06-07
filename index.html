@@ -454,6 +454,7 @@ const COMMENT_CACHE_PREFIX = 'gurogu_item_comments_';
 const NOTI_KEY_PREFIX = 'gurogu_notifications_';
 const NOTI_SEEN_PREFIX = 'gurogu_engagement_seen_';
 const NOTI_DELETED_PREFIX = 'gurogu_deleted_noti_keys_';
+const MY_CMT_IDS_KEY = 'gurogu_my_cmt_ids'; // 내 댓글 ID 캐시 (Egress 절감용)
 const hydratingPhotoIds = new Set();
 const hydratedPhotoIds = new Set();
 const photoHydrationPromises = new Map();
@@ -988,6 +989,28 @@ function saveSeenEngagement(seen) {
   try { localStorage.setItem(seenKey(), JSON.stringify(seen)); }
   catch (e) { console.warn('알림 기준 저장 실패', e); }
 }
+
+/* ── 내 댓글 ID 캐시 (답글 알림용 Egress 절감) ── */
+function loadMyCmtIds() {
+  try { return JSON.parse(localStorage.getItem(MY_CMT_IDS_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveMyCmtIds(ids) {
+  try { localStorage.setItem(MY_CMT_IDS_KEY, JSON.stringify(ids)); } catch {}
+}
+function addMyCmtId(id) {
+  if (!id) return;
+  const ids = loadMyCmtIds();
+  if (!ids.includes(id)) { ids.push(id); saveMyCmtIds(ids); }
+}
+async function syncMyCmtIds() {
+  // 앱 시작 시 1회 실행 — 내가 단 댓글 ID를 DB에서 가져와 localStorage에 저장
+  if (!myN) return;
+  try {
+    const { data } = await sb.from('comments').select('id').eq('author_name', myN).limit(2000);
+    if (data) saveMyCmtIds(data.map(c => c.id));
+  } catch (e) { console.warn('내 댓글 ID 동기화 실패', e); }
+}
 function unreadNotificationCount() {
   return loadNotifications().filter(n => !n.read).length;
 }
@@ -1033,14 +1056,26 @@ async function pollNotifications(silent = true) {
     return;
   }
 
-  const [likesRes, commentsRes, allCommentsRes] = await Promise.all([
+  const [likesRes, commentsRes] = await Promise.all([
     sb.from('likes').select('item_id').in('item_id', ids),
     sb.from('comments').select('id,item_id,author_name,content,created_at').in('item_id', ids),
-    restRows('comments?select=id,item_id,parent_id,author_name,content,created_at&limit=5000'),
   ]);
   if (likesRes.error) console.warn('알림 좋아요 조회 실패', likesRes.error);
   if (commentsRes.error) console.warn('알림 댓글 조회 실패', commentsRes.error);
-  if (allCommentsRes.error) console.warn('답글 알림 조회 실패', allCommentsRes.error);
+
+  // 답글 알림: localStorage 캐시된 내 댓글 ID → targeted 쿼리 (Egress 절감)
+  const myCmtIds = loadMyCmtIds();
+  let replyComments = [];
+  let replyQueryError = false;
+  if (myCmtIds.length) {
+    const { data: replyData, error: replyErr } = await sb
+      .from('comments')
+      .select('id,item_id,parent_id,author_name,content,created_at')
+      .in('parent_id', myCmtIds)
+      .neq('author_name', myN);
+    if (replyErr) { replyQueryError = true; console.warn('답글 알림 조회 실패', replyErr); }
+    else replyComments = replyData || [];
+  }
 
   const titleById = new Map([
     ...cachedItems.map(i => [i.id, i.title || '상품']),
@@ -1048,9 +1083,6 @@ async function pollNotifications(silent = true) {
   ]);
   const likes = new Map();
   (likesRes.data || []).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
-  const allComments = allCommentsRes.data || [];
-  const myCommentIds = new Set(allComments.filter(c => c.author_name === myN).map(c => c.id));
-  const replyComments = allComments.filter(c => c.parent_id && myCommentIds.has(c.parent_id) && c.author_name !== myN);
   const replyIdSet = new Set(replyComments.map(c => c.id));
   const commentsByItem = new Map();
   (commentsRes.data || []).forEach(c => {
@@ -1062,7 +1094,7 @@ async function pollNotifications(silent = true) {
   const firstRun = !prevSeen;
   const newNotis = [];
   // 답글 쿼리 실패 시 이전 기준 유지 (실패로 인한 재알림 방지)
-  nextSeen._replies = allCommentsRes.error
+  nextSeen._replies = replyQueryError
     ? ((prevSeen && prevSeen._replies) || [])
     : replyComments.map(c => c.id);
   ids.forEach(id => {
@@ -1735,10 +1767,11 @@ async function hydrateMainMeta(q) {
 }
 
 async function insertComment(itemId, content, parentId = null) {
-  await sb.from('comments').insert({
+  const { data: newCmt } = await sb.from('comments').insert({
     item_id: itemId, parent_id: parentId,
     author_name: myN, author_photo: myP, content,
-  });
+  }).select('id').single();
+  if (newCmt?.id) addMyCmtId(newCmt.id);
   // 푸시 알림
   const _itTitle = curItem?.title || '상품';
   if (!parentId && curItem?.seller_name && curItem.seller_name !== myN) {
@@ -1793,6 +1826,7 @@ async function startApp() {
   saveProfile();
   await renderMain();
   startNotificationPolling();
+  syncMyCmtIds(); // 내 댓글 ID 캐시 동기화
   goTo('s-main');
 }
 
@@ -3750,8 +3784,8 @@ function showUpdatePopup() {
   overlay.innerHTML = `
     <div class="update-sheet">
       <div class="update-badge">🐢 업데이트 안내</div>
-      <div class="update-body" style="font-size:15px;font-weight:800;margin-bottom:4px">🔔 푸시 알림 기능이 생겼어요!</div>
-      <div class="update-body">이제 매번 사이트에 들어가지 않아도 실시간으로 알림을 받을 수 있어요.<br>새 상품, 새 후기, 댓글, 답글 알림을 받아보세요!</div>
+      <div class="update-body" style="font-size:15px;font-weight:800;margin-bottom:6px">🔔 푸시 알림 기능이 생겼어요!</div>
+      <div class="update-body">이제 매번 사이트에 들어가지 않아도 실시간으로 알림을 받을 수 있어요. 새 상품, 새 후기, 댓글, 답글 알림을 받아보세요!</div>
       <hr class="update-divider">
       <div class="update-body">
         <strong>🍎 아이폰 알림 받는 방법</strong>
@@ -3762,7 +3796,7 @@ function showUpdatePopup() {
         <div class="update-item">4️⃣ <span>알림 배너 뜨면 <strong>"허용"</strong> 터치</span></div>
       </div>
       <hr class="update-divider">
-      <div class="update-body" style="font-size:12px;color:var(--text3);line-height:1.6">⚠️ 사파리 브라우저에서 열면 알림이 오지 않아요.<br>꼭 홈 화면 아이콘으로 실행해 주세요!<br><br>이미 홈 화면에 추가하셨다면 앱을 한 번 열어주시면 자동으로 설정돼요 😊</div>
+      <div class="update-body" style="font-size:12px;color:var(--text3);line-height:1.7">⚠️ 사파리 브라우저에서 열면 알림이 오지 않아요. 꼭 홈 화면 아이콘으로 실행해 주세요! 이미 홈 화면에 추가하셨다면 앱을 한 번 열어주시면 자동으로 설정돼요 😊</div>
       <button class="update-confirm" onclick="closeUpdatePopup()">확인했어요</button>
     </div>`;
   document.body.appendChild(overlay);
@@ -3782,6 +3816,7 @@ function closeUpdatePopup() {
 if (myN) {
   renderMain();
   startNotificationPolling();
+  syncMyCmtIds(); // 내 댓글 ID 캐시 동기화 (Egress 절감)
   document.getElementById('s-nick').className = 'screen right';
   document.getElementById('s-main').className = 'screen active';
   screenHistory = ['s-main'];
