@@ -15,15 +15,24 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// 알림 클릭 시 앱 열기
+// 알림 클릭 시 앱 열기 + 해당 상품/후기로 이동
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const itemId = event.notification.data?.itemId || '';
+  const openUrl = itemId ? `/?noti=${encodeURIComponent(itemId)}` : '/';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // 앱이 이미 열려 있으면 포커스 + postMessage로 이동 지시
       for (const client of clientList) {
-        if (client.url && 'focus' in client) return client.focus();
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          client.focus();
+          if (itemId) client.postMessage({ type: 'NOTI_NAV', itemId });
+          return;
+        }
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      // 앱이 닫혀 있으면 URL 파라미터로 열기
+      if (clients.openWindow) return clients.openWindow(openUrl);
     })
   );
 });

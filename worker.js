@@ -50,7 +50,7 @@ export default {
     // ── POST /push-all → 전체 구독자에게 알림 (새 상품 등록 등) ──
     if (pathname === '/push-all' && request.method === 'POST') {
       try {
-        const { senderName, title, body } = await request.json();
+        const { senderName, title, body, itemId } = await request.json();
         if (!senderName || !title)
           return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json', ...CORS } });
 
@@ -63,7 +63,7 @@ export default {
         if (!rows?.length)
           return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json', ...CORS } });
 
-        const payload = JSON.stringify({ title, body: body || '' });
+        const payload = JSON.stringify({ title, body: body || '', ...(itemId ? { itemId } : {}) });
         const targets = rows.filter(r => r.user_name !== senderName);
         if (!targets.length)
           return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json', ...CORS } });
@@ -85,7 +85,7 @@ export default {
     // ── POST /push → 네이티브 Web Push 알림 전송 ──
     if (pathname === '/push' && request.method === 'POST') {
       try {
-        const { recipientName, title, body } = await request.json();
+        const { recipientName, title, body, itemId } = await request.json();
         if (!recipientName || !title)
           return new Response(JSON.stringify({ skipped: true }), { headers: { 'Content-Type': 'application/json', ...CORS } });
 
@@ -99,7 +99,7 @@ export default {
         if (!subs?.length)
           return new Response(JSON.stringify({ skipped: 'no subscription' }), { headers: { 'Content-Type': 'application/json', ...CORS } });
 
-        const payload = JSON.stringify({ title, body: body || '' });
+        const payload = JSON.stringify({ title, body: body || '', ...(itemId ? { itemId } : {}) });
         // 사용자의 모든 기기에 전송
         const results = await Promise.allSettled(
           subs.map(r => sendWebPush(r.subscription, payload).then(res => res.status).catch(e => `err:${e.message}`))

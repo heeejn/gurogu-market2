@@ -1423,7 +1423,7 @@ async function fetchItems() {
   // 1. Cloudflare Worker 캐시 (빠름 — 45초 캐싱)
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 7000);
+    const t = setTimeout(() => ctrl.abort(), 4000);
     const res = await fetch('https://gurogu-upload.yhj6350.workers.dev/items', { signal: ctrl.signal });
     clearTimeout(t);
     if (res.ok) return _processItems(await res.json());
@@ -1477,13 +1477,12 @@ function mergeFetchedItems(freshItems) {
 
 async function fetchItemCounts(items) {
   const ids = items.map(i => i.id);
-  const idSet = new Set(ids);
   const empty = { likes: new Map(), comments: new Map() };
   if (!ids.length) return empty;
 
   const [likesRes, commentsRes] = await Promise.all([
-    restRows('likes?select=item_id&limit=5000'),
-    restRows('comments?select=item_id&limit=5000'),
+    sb.from('likes').select('item_id').in('item_id', ids),
+    sb.from('comments').select('item_id').in('item_id', ids),
   ]);
   if (likesRes.error || commentsRes.error) {
     console.error(likesRes.error || commentsRes.error);
@@ -1492,8 +1491,8 @@ async function fetchItemCounts(items) {
 
   const likes = new Map();
   const comments = new Map();
-  (likesRes.data || []).filter(l => idSet.has(l.item_id)).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
-  (commentsRes.data || []).filter(c => idSet.has(c.item_id)).forEach(c => comments.set(c.item_id, (comments.get(c.item_id) || 0) + 1));
+  (likesRes.data || []).forEach(l => likes.set(l.item_id, (likes.get(l.item_id) || 0) + 1));
+  (commentsRes.data || []).forEach(c => comments.set(c.item_id, (comments.get(c.item_id) || 0) + 1));
   return { likes, comments };
 }
 
@@ -1777,14 +1776,14 @@ async function insertComment(itemId, content, parentId = null) {
   // 푸시 알림
   const _itTitle = curItem?.title || '상품';
   if (!parentId && curItem?.seller_name && curItem.seller_name !== myN) {
-    sendPushToUser(curItem.seller_name, `'${_itTitle}' 댓글`, `${myN}: ${content.slice(0, 60)}`);
+    sendPushToUser(curItem.seller_name, `'${_itTitle}' 댓글`, `${myN}: ${content.slice(0, 60)}`, itemId);
   }
   if (parentId) {
     // 답글: 부모 댓글 작성자에게 알림
     const parentEl = document.getElementById('cmt-' + parentId);
     const parentAuthor = parentEl?.dataset?.author;
     if (parentAuthor && parentAuthor !== myN) {
-      sendPushToUser(parentAuthor, `'${_itTitle}' 답글`, `${myN}: ${content.slice(0, 60)}`);
+      sendPushToUser(parentAuthor, `'${_itTitle}' 답글`, `${myN}: ${content.slice(0, 60)}`, itemId);
     }
   }
 }
@@ -1856,6 +1855,20 @@ let likedItemIds = new Set();
 let likedItemIdsReady = false;
 let titleToSellerMap = {};  // 상품 제목 → 판매자 닉네임 (후기에서 판매자 표시용)
 
+// ── 후기 캐시 ──
+const _REVIEWS_CACHE_KEY = 'gurogu_reviews_v1';
+function _loadReviewsCache() {
+  try {
+    const raw = localStorage.getItem(_REVIEWS_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+function _saveReviewsCache(data) {
+  try { localStorage.setItem(_REVIEWS_CACHE_KEY, JSON.stringify(data)); } catch {}
+}
+let cachedReviews = _loadReviewsCache(); // { reviews, likeMap, myLikedSet, cmtMap, titleToSeller }
+
 async function renderMain(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
   const cats = ['전체', '의류', '전자기기', '도서', '생활용품', '취미', '식물', '기타'];
@@ -1907,12 +1920,7 @@ async function renderMain(q) {
     let items = await fetchItems();
 
     if (!items) {
-      // 첫 시도 실패 → 2초 후 1회 자동 재시도
-      const grid = document.querySelector('#s-main .grid');
-      if (grid && !cachedItems.length) {
-        grid.innerHTML = '<div class="loading"><div class="spin"></div> 다시 시도 중...</div>';
-      }
-      await new Promise(r => setTimeout(r, 2000));
+      // 첫 시도 실패 → 1회 즉시 재시도
       items = await fetchItems();
     }
 
@@ -2094,10 +2102,32 @@ async function fetchAndUpdateReviewBadge() {
 async function renderReviews() {
   const content = document.querySelector('#s-main .content');
   if (!content) return;
-  content.innerHTML = `<div class="review-feed">
-    <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
-    <div class="loading"><div class="spin"></div> 불러오는 중...</div>
-  </div>`;
+
+  // 캐시 즉시 표시
+  function _renderReviewFeed(data, isStale) {
+    const feed = document.querySelector('#s-main .review-feed');
+    if (!feed) return;
+    const { reviews, likeMap, myLikedSet, cmtMap, titleToSeller } = data;
+    if (!reviews.length) {
+      feed.innerHTML = `
+        <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+        <div class="rv-empty">아직 후기가 없어요<br>첫 구매 후기를 남겨보세요! ✨</div>`;
+    } else {
+      feed.innerHTML = `
+        <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+        ${reviews.map(r => reviewCardH(r, likeMap[r.id] || 0, (myLikedSet instanceof Set ? myLikedSet : new Set(myLikedSet)).has(r.id), cmtMap[r.id] || 0, titleToSeller[r.item_title] || '')).join('')}`;
+    }
+  }
+
+  if (cachedReviews) {
+    content.innerHTML = `<div class="review-feed"></div>`;
+    _renderReviewFeed(cachedReviews, true);
+  } else {
+    content.innerHTML = `<div class="review-feed">
+      <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+      <div class="loading"><div class="spin"></div> 불러오는 중...</div>
+    </div>`;
+  }
 
   const [rvResp, likesResp, cmtsResp, itemsResp] = await Promise.all([
     sb.from('reviews').select('*').order('created_at', { ascending: false }),
@@ -2105,6 +2135,16 @@ async function renderReviews() {
     sb.from('review_comments').select('review_id'),
     sb.from('items').select('title,seller_name'),
   ]);
+
+  if (rvResp.error) {
+    if (!cachedReviews) {
+      const feed = document.querySelector('#s-main .review-feed');
+      if (feed) feed.innerHTML = `
+        <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
+        <div class="rv-empty">후기를 불러오지 못했어요 🥲</div>`;
+    }
+    return;
+  }
 
   const reviews = rvResp.data || [];
   const likes   = likesResp.data || [];
@@ -2124,17 +2164,11 @@ async function renderReviews() {
   // ── 후기 탭 배지 업데이트 ──
   applyReviewTabBadge(reviews);
 
-  const feed = document.querySelector('#s-main .review-feed');
-  if (!feed) return;
-  if (rvResp.error || !reviews.length) {
-    feed.innerHTML = `
-      <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
-      <div class="rv-empty">${rvResp.error ? '후기를 불러오지 못했어요 🥲' : '아직 후기가 없어요<br>첫 구매 후기를 남겨보세요! ✨'}</div>`;
-    return;
-  }
-  feed.innerHTML = `
-    <button class="rv-write-btn" onclick="openReviewForm()"><i class="ti ti-pencil-plus" aria-hidden="true"></i> 후기 쓰기</button>
-    ${reviews.map(r => reviewCardH(r, likeMap[r.id] || 0, myLikedSet.has(r.id), cmtMap[r.id] || 0, titleToSeller[r.item_title] || '')).join('')}`;
+  const freshData = { reviews, likeMap, myLikedSet: [...myLikedSet], cmtMap, titleToSeller };
+  cachedReviews = freshData;
+  _saveReviewsCache(freshData);
+
+  _renderReviewFeed({ ...freshData, myLikedSet }, false);
 }
 
 /* ── SNS 카드 HTML (2열) ── */
@@ -2418,7 +2452,7 @@ async function submitRvComment(reviewId) {
     // 푸시 알림 — 후기 작성자에게
     if (_currentReviewAuthor && _currentReviewAuthor !== myN) {
       const _rvIt = _currentReviewItemTitle ? `'${_currentReviewItemTitle}' ` : '';
-      sendPushToUser(_currentReviewAuthor, `${_rvIt}후기 댓글`, `${myN}: ${text.slice(0, 60)}`);
+      sendPushToUser(_currentReviewAuthor, `${_rvIt}후기 댓글`, `${myN}: ${text.slice(0, 60)}`, `rv:${reviewId}`);
     }
     // 카드 댓글 수 업데이트
     const card = document.querySelector(`[data-rid="${reviewId}"] .rv-act-btn:last-child span`);
@@ -2511,7 +2545,7 @@ async function submitRvReply(parentId, reviewId) {
     const parentAuthor = parentCmtEl?.dataset?.author;
     if (parentAuthor && parentAuthor !== myN) {
       const _rvIt2 = _currentReviewItemTitle ? `'${_currentReviewItemTitle}' ` : '';
-      sendPushToUser(parentAuthor, `${_rvIt2}후기 답글`, `${myN}: ${text.slice(0, 60)}`);
+      sendPushToUser(parentAuthor, `${_rvIt2}후기 답글`, `${myN}: ${text.slice(0, 60)}`, `rv:${reviewId}`);
     }
   } catch (e) {
     console.error('답글 실패', e);
@@ -2605,6 +2639,7 @@ async function deleteReview(reviewId) {
     const { error } = await sb.from('reviews').delete().eq('id', reviewId);
     if (error) throw error;
     toast('후기를 삭제했어요');
+    cachedReviews = null; _saveReviewsCache(null);
     if (statF === '후기') renderReviews();
   } catch (e) {
     console.error('후기 삭제 실패', e);
@@ -2799,7 +2834,7 @@ async function submitReview() {
       if (error) throw error;
       toast('후기를 수정했어요 ✅');
     } else {
-      const { error } = await sb.from('reviews').insert({
+      const { data: newRv, error } = await sb.from('reviews').insert({
         reviewer_name: myN,
         reviewer_photo: myP || null,
         photo_url: photo_urls[0] || '',
@@ -2807,7 +2842,7 @@ async function submitReview() {
         item_title: itemTitle,
         content,
         rating: rvRating,
-      });
+      }).select('id').single();
       if (error) throw error;
       toast('후기를 등록했어요 🎉');
       // 전체 구독자에게 새 후기 알림
@@ -2817,10 +2852,11 @@ async function submitReview() {
       fetch(`${WORKER_URL}/push-all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderName: myN, title: `구로구마켓 ⭐ 새 후기`, body: _rvPushBody }),
+        body: JSON.stringify({ senderName: myN, title: `구로구마켓 ⭐ 새 후기`, body: _rvPushBody, itemId: newRv?.id ? `rv:${newRv.id}` : null }),
       }).catch(() => {});
     }
     closeReviewForm();
+    cachedReviews = null; _saveReviewsCache(null);
     if (statF === '후기') renderReviews();
   } catch (e) {
     console.error('후기 저장 실패', e);
@@ -3386,18 +3422,24 @@ async function openNotificationItem(itemId) {
     toast('상품 정보를 찾지 못했어요');
     return;
   }
+  // 알림 화면 닫기 (s-noti → s-main 복귀, 뒤로가기 히스토리 정리)
+  goBack();
+
   // 후기 댓글/답글 알림: rv:reviewId 형태
   if (String(itemId).startsWith('rv:')) {
     const reviewId = itemId.slice(3);
-    goBack(); // 알림 화면 닫기
-    // 후기 탭으로 이동
-    statF = '후기';
-    await renderMain();
-    goTo('s-main');
+    // 후기 탭으로 전환
+    if (statF !== '후기') {
+      statF = '후기';
+      document.querySelectorAll('#s-main .stab').forEach(t => t.classList.toggle('on', t.dataset.stat === '후기'));
+      await renderReviews();
+    }
     await new Promise(r => setTimeout(r, 80)); // 탭 렌더 대기
     openReviewDetail(reviewId);
     return;
   }
+
+  // 일반 상품 → 상세 화면으로 이동
   await openDet(itemId);
   commentCache.delete(itemId);
   forgetCachedComments(itemId);
@@ -3533,9 +3575,39 @@ async function initWebPush() {
     } else if (Notification.permission === 'default') {
       setTimeout(_showNotiBanner, 2000);
     }
+
+    // 앱이 열려있는 상태에서 알림 탭 → SW가 postMessage로 itemId 전달
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'NOTI_NAV' && event.data.itemId) {
+        _navigateToPushItem(event.data.itemId);
+      }
+    });
   } catch (e) {
     console.warn('Web Push 초기화 실패', e.message, e);
   }
+}
+
+// 푸시 알림 탭 → 앱 내 이동 (앱이 닫혀있다가 열릴 때 OR 이미 열려있을 때 모두 사용)
+async function _navigateToPushItem(itemId) {
+  if (!itemId || !myN) return;
+  // 현재 어느 화면이든 s-main으로 리셋 후 이동
+  allScreens.forEach(s => {
+    document.getElementById(s).className = s === 's-main' ? 'screen active' : 'screen right';
+  });
+  screenHistory = ['s-main'];
+
+  if (String(itemId).startsWith('rv:')) {
+    const reviewId = itemId.slice(3);
+    if (statF !== '후기') {
+      statF = '후기';
+      document.querySelectorAll('#s-main .stab').forEach(t => t.classList.toggle('on', t.dataset.stat === '후기'));
+      await renderReviews();
+    }
+    await new Promise(r => setTimeout(r, 80));
+    openReviewDetail(reviewId);
+    return;
+  }
+  await openDet(itemId);
 }
 
 function _showNotiBanner() {
@@ -3598,13 +3670,13 @@ async function _saveSubscription() {
   }
 }
 
-async function sendPushToUser(recipientName, title, body) {
+async function sendPushToUser(recipientName, title, body, itemId = null) {
   if (!recipientName || recipientName === myN) return; // 자기 자신에게는 안 보냄
   try {
     fetch(`${WORKER_URL}/push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipientName, title, body }),
+      body: JSON.stringify({ recipientName, title, body, ...(itemId ? { itemId } : {}) }),
     });
   } catch (e) { /* 푸시 실패해도 앱 동작에 영향 없음 */ }
 }
@@ -3702,7 +3774,7 @@ async function doAddItem() {
     fetch(`${WORKER_URL}/push-all`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senderName: myN, title: `구로구마켓 🛍 새 상품`, body: `'${t}' 상품이 등록됐어요 (${myN})` }),
+      body: JSON.stringify({ senderName: myN, title: `구로구마켓 🛍 새 상품`, body: `'${t}' 상품이 등록됐어요 (${myN})`, itemId: newItem?.id || null }),
     }).catch(() => {});
     statF = '판매중'; catF = '전체';
     try { localStorage.setItem('gurogu_statF', '판매중'); localStorage.setItem('gurogu_catF', '전체'); } catch (e) {}
@@ -3824,6 +3896,9 @@ if (myN) {
   renderMain();
   startNotificationPolling();
   syncMyCmtIds(); // 내 댓글 ID 캐시 동기화 (Egress 절감)
+  // 푸시 알림 탭으로 열린 경우 → 해당 상품/후기로 이동
+  const _notiParam = new URLSearchParams(location.search).get('noti');
+  if (_notiParam) setTimeout(() => _navigateToPushItem(_notiParam), 1200);
   document.getElementById('s-nick').className = 'screen right';
   document.getElementById('s-main').className = 'screen active';
   screenHistory = ['s-main'];
