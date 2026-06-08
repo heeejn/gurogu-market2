@@ -93,6 +93,8 @@
     .card:active { opacity: .88; }
     .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
     .card-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
+    .photo-img { opacity: 0; transition: opacity .16s ease; }
+    .photo-img.loaded { opacity: 1; }
     .photo-loading { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: transparent; background: linear-gradient(110deg, #F3F5F8 8%, #FAFBFC 18%, #EEF1F5 33%); background-size: 200% 100%; animation: photoShimmer 1.2s linear infinite; font-size: 0; }
     @keyframes photoShimmer { to { background-position-x: -200%; } }
     .card-body { padding: 8px 9px 10px; border-top: .5px solid var(--br); }
@@ -238,7 +240,7 @@
     .rv-photos-slides { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; aspect-ratio: 1; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
     .rv-photos-slides::-webkit-scrollbar { display: none; }
     .rv-photo-s { flex: 0 0 100%; scroll-snap-align: start; aspect-ratio: 1; cursor: pointer; }
-    .rv-photo-s img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .rv-photo-s img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
     .rv-photo-counter { position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,.55); color: #fff; font-size: 10px; font-weight: 800; border-radius: 8px; padding: 2px 6px; pointer-events: none; }
     /* 카드 바디 (컴팩트) */
     .rv-body { padding: 7px 8px 9px; }
@@ -282,7 +284,7 @@
     .rv-photo-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; width: 100%; height: 100%; }
     .rv-photo-track::-webkit-scrollbar { display: none; }
     .rv-photo-slide { flex: 0 0 100%; width: 100%; height: 100%; scroll-snap-align: start; cursor: pointer; overflow: hidden; }
-    .rv-photo-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .rv-photo-slide img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
     .rv-photo-counter { position: absolute; bottom: 10px; right: 12px; background: rgba(0,0,0,.52); color: #fff; font-size: 11px; font-weight: 800; border-radius: 20px; padding: 3px 9px; pointer-events: none; z-index: 5; }
     .rv-det-review { padding: 14px; border-bottom: .5px solid var(--br); }
     .rv-det-comments { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
@@ -590,10 +592,13 @@ function itemMedia(v, category) {
 function uniquePhotoRefs(refs) {
   return [...new Set((refs || []).filter(isPhotoRef))];
 }
-function fallbackImgHtml(urls, alt = '사진', category = '기타') {
+function fallbackImgHtml(urls, alt = '사진', category = '기타', loading = 'lazy') {
   const clean = uniquePhotoRefs(urls);
   if (!clean.length) return '';
-  return `<img src="${esc(clean[0])}" alt="${esc(alt)}" data-fallbacks="${esc(JSON.stringify(clean))}" data-fallback-index="0" data-category="${esc(category || '기타')}" onerror="nextImgFallback(this)">`;
+  return `<img class="photo-img" src="${esc(clean[0])}" alt="${esc(alt)}" loading="${esc(loading)}" decoding="async" data-fallbacks="${esc(JSON.stringify(clean))}" data-fallback-index="0" data-category="${esc(category || '기타')}" onload="markImgLoaded(this)" onerror="nextImgFallback(this)">`;
+}
+function markImgLoaded(img) {
+  img.classList.add('loaded');
 }
 function nextImgFallback(img) {
   let urls = [];
@@ -601,6 +606,7 @@ function nextImgFallback(img) {
   const next = (parseInt(img.dataset.fallbackIndex || '0', 10) || 0) + 1;
   if (urls[next]) {
     img.dataset.fallbackIndex = String(next);
+    img.classList.remove('loaded');
     img.src = urls[next];
     return;
   }
@@ -616,13 +622,16 @@ function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
-    return thumbs.map((p, idx) => `<div class="det-img det-img-pending" onclick="openDetailPhoto(${idx})">${fallbackImgHtml([p], '상품 사진', category)}</div>`).join('');
+    if (isThumbOnlyPayload(v)) {
+      return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'};cursor:default;"><div class="loading"><div class="spin"></div> 원본 사진 불러오는 중...</div></div>`;
+    }
+    return thumbs.map((p, idx) => `<div class="det-img det-img-pending" onclick="openDetailPhoto(${idx})">${fallbackImgHtml([p], '상품 사진', category, 'eager')}</div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'};cursor:default;">${fallback}</div>`;
   }
-  return photos.map((p, idx) => `<div class="det-img" onclick="openDetailPhoto(${idx})">${fallbackImgHtml([p], '상품 사진', category)}</div>`).join('');
+  return photos.map((p, idx) => `<div class="det-img" onclick="openDetailPhoto(${idx})">${fallbackImgHtml([p], '상품 사진', category, 'eager')}</div>`).join('');
 }
 function detGalleryCounter(v) {
   const photos = itemPhotoList(v);
@@ -2466,10 +2475,10 @@ async function openReviewDetail(reviewId) {
     const cleanPhotos = uniquePhotoRefs(photos);
     const photosJson = JSON.stringify(cleanPhotos);
     if (cleanPhotos.length === 1) {
-      photoHtml = `<div class="rv-photo-slider"><div class="rv-photo-track"><div class="rv-photo-slide" onclick="openPhotoModal(${jsStr(cleanPhotos[0])},${esc(photosJson)},0)">${fallbackImgHtml(cleanPhotos, '후기 사진', '기타')}</div></div></div>`;
+      photoHtml = `<div class="rv-photo-slider"><div class="rv-photo-track"><div class="rv-photo-slide" onclick="openPhotoModal(${jsStr(cleanPhotos[0])},${esc(photosJson)},0)">${fallbackImgHtml(cleanPhotos, '후기 사진', '기타', 'eager')}</div></div></div>`;
     } else {
       const slides = cleanPhotos.map((p, i) =>
-        `<div class="rv-photo-slide" onclick="openPhotoModal(${jsStr(p)},${esc(photosJson)},${i})">${fallbackImgHtml([p], `사진 ${i + 1}`, '기타')}</div>`
+        `<div class="rv-photo-slide" onclick="openPhotoModal(${jsStr(p)},${esc(photosJson)},${i})">${fallbackImgHtml([p], `사진 ${i + 1}`, '기타', 'eager')}</div>`
       ).join('');
       photoHtml = `<div class="rv-photo-slider" id="_rvPhotoSlider">
         <div class="rv-photo-track" id="_rvPhotoTrack" onscroll="updateRvDetPhotoCounter(this,${cleanPhotos.length})">${slides}</div>
@@ -3031,8 +3040,7 @@ async function openDet(id) {
   const gomindPromise = own ? Promise.resolve() : _fetchGomindRows(id);
 
   const hasFullPhotos = itemPhotoList(curItem.emoji).length && !isThumbOnlyPayload(curItem.emoji);
-  const hasThumbs = itemThumbList(curItem.emoji).length > 0;
-  const needsFullPhotos = !hasFullPhotos && !hasThumbs && !plainEmoji(curItem.emoji);
+  const needsFullPhotos = !hasFullPhotos && !plainEmoji(curItem.emoji);
   if (needsFullPhotos) {
     renderDetLoading(curItem);
     goTo('s-det');
