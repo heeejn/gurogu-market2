@@ -1,7 +1,9 @@
 const SECRET = 'gurogu2026';
 const SUPA_URL = 'https://mgexlhhhtskpfiukzwae.supabase.co';
 const SUPA_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
-const CACHE_TTL = 45;
+const CACHE_TTL = 300;
+const STALE_TTL = 60 * 60 * 24;
+const SUPA_TIMEOUT_MS = 8000;
 
 // VAPID 키 (ECDSA P-256)
 const VAPID_PUBLIC_KEY  = 'BN7gnLGpLS46xq7m8CiktWlZ_utpBFEYtM4qZHLeVBALvE_dFMGGRWfI_74KbAf8WHm7Z_lzVSyX2XK8cbqTGVw';
@@ -23,7 +25,8 @@ export default {
 
     // ── GET /items → Supabase 캐싱 프록시 ──
     if (pathname === '/items' && request.method === 'GET') {
-      const cacheKey = new Request('https://gurogu-cache.internal/items-v1');
+      const cacheKey = new Request('https://gurogu-cache.internal/items-v2');
+      const staleKey = new Request('https://gurogu-cache.internal/items-v2-stale');
       const cache = caches.default;
       const hit = await cache.match(cacheKey);
       if (hit) {
@@ -33,18 +36,65 @@ export default {
         return new Response(hit.body, { status: hit.status, headers });
       }
 
-      const cols = 'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls';
-      const supaRes = await fetch(
-        `${SUPA_URL}/rest/v1/items?select=${encodeURIComponent(cols)}&limit=200&order=created_at.desc`,
-        { headers: { apikey: SUPA_KEY, authorization: `Bearer ${SUPA_KEY}`, 'Prefer': 'count=none' } }
-      );
-      const body = await supaRes.text();
-      const res = new Response(body, {
-        status: supaRes.status,
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${CACHE_TTL}`, 'X-Cache': 'MISS', ...CORS },
-      });
-      if (supaRes.ok) ctx.waitUntil(cache.put(cacheKey, res.clone()));
-      return res;
+      const cols = 'id,title,price,category,description,seller_name,sold,reserved,fcfs,created_at';
+      try {
+        const supaRes = await fetchWithTimeout(
+          `${SUPA_URL}/rest/v1/items?select=${encodeURIComponent(cols)}&limit=200&order=created_at.desc`,
+          { headers: { apikey: SUPA_KEY, authorization: `Bearer ${SUPA_KEY}`, 'Prefer': 'count=none' } }
+        );
+        const body = await supaRes.text();
+        if (!supaRes.ok) throw new Error(`Supabase items ${supaRes.status}: ${body.slice(0, 120)}`);
+        const fresh = jsonResponse(body, { cacheSeconds: CACHE_TTL, cacheState: 'MISS' });
+        const stale = jsonResponse(body, { cacheSeconds: STALE_TTL, cacheState: 'STALE-SEED' });
+        ctx.waitUntil(Promise.all([cache.put(cacheKey, fresh.clone()), cache.put(staleKey, stale.clone())]));
+        return fresh;
+      } catch (e) {
+        const stale = await cache.match(staleKey);
+        if (stale) return withCors(stale, { cacheState: 'STALE', warning: e.message });
+        return jsonResponse(JSON.stringify({ error: e.message }), { status: 502, cacheSeconds: 0, cacheState: 'ERROR' });
+      }
+    }
+
+    // ── GET /reviews → 후기/좋아요/댓글수/상품 판매자 캐싱 프록시 ──
+    if (pathname === '/reviews' && request.method === 'GET') {
+      const cacheKey = new Request('https://gurogu-cache.internal/reviews-v2');
+      const staleKey = new Request('https://gurogu-cache.internal/reviews-v2-stale');
+      const cache = caches.default;
+      const hit = await cache.match(cacheKey);
+      if (hit) {
+        const headers = new Headers(hit.headers);
+        headers.set('X-Cache', 'HIT');
+        Object.entries(CORS).forEach(([k, v]) => headers.set(k, v));
+        return new Response(hit.body, { status: hit.status, headers });
+      }
+
+      try {
+        const headers = { apikey: SUPA_KEY, authorization: `Bearer ${SUPA_KEY}`, 'Prefer': 'count=none' };
+        const [reviewsRes, likesRes, commentsRes, itemsRes] = await Promise.all([
+          fetchWithTimeout(`${SUPA_URL}/rest/v1/reviews?select=*&order=created_at.desc`, { headers }),
+          fetchWithTimeout(`${SUPA_URL}/rest/v1/review_likes?select=review_id,user_name`, { headers }),
+          fetchWithTimeout(`${SUPA_URL}/rest/v1/review_comments?select=review_id`, { headers }),
+          fetchWithTimeout(`${SUPA_URL}/rest/v1/items?select=title,seller_name`, { headers }),
+        ]);
+
+        const responses = [reviewsRes, likesRes, commentsRes, itemsRes];
+        if (!responses.every(r => r.ok)) throw new Error(`Supabase reviews ${responses.map(r => r.status).join('/')}`);
+
+        const body = JSON.stringify({
+          reviews: await reviewsRes.json(),
+          likes: await likesRes.json(),
+          comments: await commentsRes.json(),
+          items: await itemsRes.json(),
+        });
+        const res = jsonResponse(body, { cacheSeconds: CACHE_TTL, cacheState: 'MISS' });
+        const stale = jsonResponse(body, { cacheSeconds: STALE_TTL, cacheState: 'STALE-SEED' });
+        ctx.waitUntil(Promise.all([cache.put(cacheKey, res.clone()), cache.put(staleKey, stale.clone())]));
+        return res;
+      } catch (e) {
+        const stale = await cache.match(staleKey);
+        if (stale) return withCors(stale, { cacheState: 'STALE', warning: e.message });
+        return jsonResponse(JSON.stringify({ error: e.message }), { status: 502, cacheSeconds: 0, cacheState: 'ERROR' });
+      }
     }
 
     // ── POST /push-all → 전체 구독자에게 알림 (새 상품 등록 등) ──
@@ -151,6 +201,36 @@ function concat(...arrays) {
   let offset = 0;
   for (const a of arrays) { out.set(a, offset); offset += a.length; }
   return out;
+}
+
+function jsonResponse(body, { status = 200, cacheSeconds = CACHE_TTL, cacheState = 'MISS' } = {}) {
+  return new Response(body, {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': cacheSeconds ? `public, max-age=${cacheSeconds}` : 'no-store',
+      'X-Cache': cacheState,
+      ...CORS,
+    },
+  });
+}
+
+function withCors(response, { cacheState = 'HIT', warning = '' } = {}) {
+  const headers = new Headers(response.headers);
+  headers.set('X-Cache', cacheState);
+  if (warning) headers.set('X-Stale-Reason', warning.slice(0, 180));
+  Object.entries(CORS).forEach(([k, v]) => headers.set(k, v));
+  return new Response(response.body, { status: 200, headers });
+}
+
+async function fetchWithTimeout(url, init = {}, ms = SUPA_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /* ════════════════════════════════

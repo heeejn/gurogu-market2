@@ -9,11 +9,11 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="구로구마켓">
-  <link rel="apple-touch-icon" href="/gurogu-market-logo.png">
+  <link rel="apple-touch-icon" href="gurogu-market-logo.png">
   <!-- Web Push -->
   <style>
     /* ─── 리셋 & 기본 ─── */
@@ -432,6 +432,7 @@ const SUPABASE_URL = 'https://mgexlhhhtskpfiukzwae.supabase.co';
 const WORKER_URL = 'https://gurogu-upload.yhj6350.workers.dev';
 const VAPID_PUBLIC_KEY = 'BN7gnLGpLS46xq7m8CiktWlZ_utpBFEYtM4qZHLeVBALvE_dFMGGRWfI_74KbAf8WHm7Z_lzVSyX2XK8cbqTGVw';
 const SUPABASE_KEY = 'sb_publishable_U4i6EZZGMaIye75247dhbw_bSajlsnk';
+const ITEM_LIST_COLS = 'id,title,price,category,description,seller_name,sold,reserved,fcfs,created_at';
 
 /* ── Supabase 초기화 ── */
 const { createClient } = supabase;
@@ -472,7 +473,7 @@ function av(p, n, s) {
   return `<span style="font-size:${Math.round(s * .38)}px;font-weight:800;">${(n || '?')[0]}</span>`;
 }
 function logoImg() {
-  return '<span class="logo-mark"><img class="logo-img" src="/gurogu-market-logo.png"></span>';
+  return '<span class="logo-mark"><img class="logo-img" src="gurogu-market-logo.png"></span>';
 }
 function isImg(v) {
   return typeof v === 'string' && v.startsWith('data:image/');
@@ -1425,7 +1426,7 @@ async function fetchItems() {
   const workerPromise = (async () => {
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 5000);
+      const t = setTimeout(() => ctrl.abort(), 3500);
       const res = await fetch(`${WORKER_URL}/items`, { signal: ctrl.signal });
       clearTimeout(t);
       if (res.ok) {
@@ -1440,12 +1441,12 @@ async function fetchItems() {
   const sbPromise = (async () => {
     try {
       const query = sb.from('items')
-        .select('id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls')
+        .select(ITEM_LIST_COLS)
         .order('created_at', { ascending: false })
         .limit(200);
       const { data, error } = await Promise.race([
         query,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000)),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4500)),
       ]);
       if (!error && data && data.length > 0) return _processItems(data);
       if (error) console.warn('Supabase JS 실패:', error.message);
@@ -1456,8 +1457,7 @@ async function fetchItems() {
   // 경로 3: Supabase REST API 직접 호출 (SDK와 다른 코드 경로)
   const restPromise = (async () => {
     try {
-      const cols = 'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls';
-      const res = await restRows(`items?select=${encodeURIComponent(cols)}&limit=200&order=created_at.desc`, 10000);
+      const res = await restRows(`items?select=${encodeURIComponent(ITEM_LIST_COLS)}&limit=200&order=created_at.desc`, 4500);
       if (!res.error && res.data && res.data.length > 0) return _processItems(res.data);
       if (res.error) console.warn('REST 실패:', JSON.stringify(res.error));
     } catch (e) { console.warn('REST 예외:', e.message); }
@@ -1520,10 +1520,10 @@ async function fetchItemPhotos(ids) {
   for (const id of ids) {
     const { data, error } = await sb
       .from('items')
-      .select('id,emoji,seller_photo')
+      .select('id,emoji')
       .eq('id', id)
       .single();
-    if (!error && data) photos.set(id, { emoji: data.emoji, seller_photo: data.seller_photo || '' });
+    if (!error && data) photos.set(id, { emoji: data.emoji });
   }
   return photos;
 }
@@ -1549,9 +1549,8 @@ async function hydrateVisiblePhotoBatch(ids, q) {
   targets.forEach(id => hydratingPhotoIds.add(id));
   const inFilter = `in.(${targets.join(',')})`;
   const columnSets = [
-    'id,emoji,seller_photo,category,thumbnail_url,photo_urls',
-    'id,emoji,seller_photo,category,thumbnail_url',
-    'id,emoji,seller_photo,category',
+    'id,emoji,category,thumbnail_url,photo_urls',
+    'id,emoji,category,thumbnail_url',
     'id,emoji,category',
   ];
   let rows = null;
@@ -1583,7 +1582,7 @@ async function hydrateVisiblePhotoBatch(ids, q) {
       ...item,
       ...data,
       emoji: nextEmoji || item.emoji,
-      seller_photo: data.seller_photo || item.seller_photo || '',
+      seller_photo: item.seller_photo || '',
       likeCount: item.likeCount ?? 0,
       commentCount: item.commentCount ?? 0,
     };
@@ -1600,9 +1599,8 @@ async function hydrateItemPhotos(id, q) {
   const promise = (async () => {
     hydratingPhotoIds.add(id);
     const columnSets = [
-      'id,emoji,seller_photo,category,thumbnail_url,photo_urls',
-      'id,emoji,seller_photo,category,thumbnail_url',
-      'id,emoji,seller_photo,category',
+      'id,emoji,category,thumbnail_url,photo_urls',
+      'id,emoji,category,thumbnail_url',
       'id,emoji,category',
     ];
     let data = null;
@@ -1637,7 +1635,7 @@ async function hydrateItemPhotos(id, q) {
         ...i,
         ...data,
         emoji: nextEmoji,
-        seller_photo: data.seller_photo || i.seller_photo || existing?.seller_photo || '',
+        seller_photo: i.seller_photo || existing?.seller_photo || '',
         likeCount: i.likeCount ?? existing?.likeCount ?? 0,
         commentCount: i.commentCount ?? existing?.commentCount ?? 0,
       };
@@ -1937,11 +1935,6 @@ async function renderMain(q) {
   {
     let items = await fetchItems();
 
-    if (!items) {
-      // 첫 시도 실패 → 1회 즉시 재시도
-      items = await fetchItems();
-    }
-
     if (items) {
       cachedItems = mergeFetchedItems(items);
       _saveItemsCache(cachedItems); // 로컬 캐시 저장
@@ -2127,6 +2120,49 @@ async function fetchAndUpdateReviewBadge() {
   if (data) applyReviewTabBadge(data);
 }
 
+async function fetchReviewsBundle() {
+  const workerPromise = (async () => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3500);
+    try {
+      const res = await fetch(`${WORKER_URL}/reviews`, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(`Worker reviews ${res.status}`);
+      const data = await res.json();
+      return {
+        rvResp: { data: data.reviews || [], error: null },
+        likesResp: { data: data.likes || [], error: null },
+        cmtsResp: { data: data.comments || [], error: null },
+        itemsResp: { data: data.items || [], error: null },
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  })();
+
+  try {
+    return await workerPromise;
+  } catch (e) {
+    console.warn('Worker 후기 실패:', e.message);
+  }
+
+  const directPromise = Promise.all([
+    sb.from('reviews').select('*').order('created_at', { ascending: false }),
+    sb.from('review_likes').select('review_id,user_name'),
+    sb.from('review_comments').select('review_id'),
+    sb.from('items').select('title,seller_name'),
+  ]);
+  const timeoutBundle = {
+    rvResp: { data: null, error: new Error('reviews timeout') },
+    likesResp: { data: [], error: null },
+    cmtsResp: { data: [], error: null },
+    itemsResp: { data: [], error: null },
+  };
+  const direct = await withTimeout(directPromise, 4500, null);
+  if (!direct) return timeoutBundle;
+  const [rvResp, likesResp, cmtsResp, itemsResp] = direct;
+  return { rvResp, likesResp, cmtsResp, itemsResp };
+}
+
 /* ── 피드 렌더링 ── */
 async function renderReviews() {
   const content = document.querySelector('#s-main .content');
@@ -2145,12 +2181,7 @@ async function renderReviews() {
     </div>`;
   }
 
-  const [rvResp, likesResp, cmtsResp, itemsResp] = await Promise.all([
-    sb.from('reviews').select('*').order('created_at', { ascending: false }),
-    sb.from('review_likes').select('review_id,user_name'),
-    sb.from('review_comments').select('review_id'),
-    sb.from('items').select('title,seller_name'),
-  ]);
+  const { rvResp, likesResp, cmtsResp, itemsResp } = await fetchReviewsBundle();
 
   const feed = document.querySelector('#s-main .review-feed');
   if (!feed) return;
@@ -3583,6 +3614,7 @@ let _currentReviewAuthor = null;    // 열려있는 후기 작성자
 let _currentReviewItemTitle = null; // 열려있는 후기 상품명
 
 async function initWebPush() {
+  if (location.protocol === 'file:') return;
   if (!('Notification' in window) || !navigator.serviceWorker || !('PushManager' in window)) return;
   try {
     _swReg = await navigator.serviceWorker.register('/sw.js');
