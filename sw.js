@@ -1,12 +1,12 @@
-const CACHE = 'gurogu-v3';
+const CACHE = 'gurogu-v4';
 const STATIC = ['/index.html', '/manifest.json', '/gurogu-market-logo.png'];
 
-// 설치 시 정적 파일 즉시 캐시
+// 설치 시 정적 파일 즉시 캐시 (파일 하나 실패해도 설치 중단되지 않도록 개별 캐싱)
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(STATIC))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then(cache =>
+      Promise.all(STATIC.map(url => cache.add(url).catch(() => {})))
+    ).then(() => self.skipWaiting())
   );
 });
 

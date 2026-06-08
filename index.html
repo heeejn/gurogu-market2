@@ -3560,10 +3560,11 @@ async function initWebPush() {
     await navigator.serviceWorker.ready;
 
     // 새 SW가 활성화되면 앱 자동 새로고침 (배포 후 수동 새로고침 불필요)
-    let _refreshing = false;
+    // localStorage 플래그로 리로드가 한 번만 발생하도록 보장 (무한 루프 방지)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (_refreshing) return;
-      _refreshing = true;
+      const flag = 'gurogu_sw_reloaded';
+      if (sessionStorage.getItem(flag)) return;
+      sessionStorage.setItem(flag, '1');
       toast('앱이 업데이트됐어요 🔄 새로고침합니다...');
       setTimeout(() => location.reload(), 1200);
     });
