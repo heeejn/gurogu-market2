@@ -579,11 +579,35 @@ function forgetCachedComments(id) {
 }
 function itemMedia(v, category) {
   const thumbs = itemThumbList(v);
-  if (thumbs.length) return `<img src="${thumbs[0]}" alt="상품 사진">`;
+  const photos = itemPhotoList(v);
+  const urls = uniquePhotoRefs([...photos, ...thumbs]);
+  if (urls.length) return fallbackImgHtml(urls, '상품 사진', category);
   const fallback = plainEmoji(v);
   return fallback
     ? `<span aria-label="상품 사진 없음">${fallback}</span>`
     : '<div class="photo-loading" aria-label="사진 불러오는 중"></div>';
+}
+function uniquePhotoRefs(refs) {
+  return [...new Set((refs || []).filter(isPhotoRef))];
+}
+function fallbackImgHtml(urls, alt = '사진', category = '기타') {
+  const clean = uniquePhotoRefs(urls);
+  if (!clean.length) return '';
+  return `<img src="${esc(clean[0])}" alt="${esc(alt)}" data-fallbacks="${esc(JSON.stringify(clean))}" data-fallback-index="0" data-category="${esc(category || '기타')}" onerror="nextImgFallback(this)">`;
+}
+function nextImgFallback(img) {
+  let urls = [];
+  try { urls = JSON.parse(img.dataset.fallbacks || '[]'); } catch (_) {}
+  const next = (parseInt(img.dataset.fallbackIndex || '0', 10) || 0) + 1;
+  if (urls[next]) {
+    img.dataset.fallbackIndex = String(next);
+    img.src = urls[next];
+    return;
+  }
+  const category = img.dataset.category || '기타';
+  const fallback = emM[category] || '📦';
+  const parent = img.parentElement;
+  if (parent) parent.innerHTML = `<span aria-label="사진 없음">${fallback}</span>`;
 }
 function jsStr(v) {
   return JSON.stringify(String(v || ''));
@@ -592,13 +616,13 @@ function itemGallery(v, category) {
   const photos = itemPhotoList(v);
   const thumbs = itemThumbList(v);
   if (!photos.length && thumbs.length) {
-    return thumbs.map((p, idx) => `<div class="det-img det-img-pending" onclick="openDetailPhoto(${idx})"><img src="${p}" alt="상품 사진"></div>`).join('');
+    return thumbs.map((p, idx) => `<div class="det-img det-img-pending" onclick="openDetailPhoto(${idx})">${fallbackImgHtml([p], '상품 사진', category)}</div>`).join('');
   }
   if (!photos.length) {
     const fallback = plainEmoji(v) || '<i class="ti ti-photo" aria-hidden="true"></i>';
     return `<div class="det-img" style="background:${bgM[category] || '#F1EFE8'};cursor:default;">${fallback}</div>`;
   }
-  return photos.map((p, idx) => `<div class="det-img" onclick="openDetailPhoto(${idx})"><img src="${p}" alt="상품 사진"></div>`).join('');
+  return photos.map((p, idx) => `<div class="det-img" onclick="openDetailPhoto(${idx})">${fallbackImgHtml([p], '상품 사진', category)}</div>`).join('');
 }
 function detGalleryCounter(v) {
   const photos = itemPhotoList(v);
@@ -825,6 +849,13 @@ function updatePhotoModalImage() {
   const img = modal?.querySelector('.photo-modal-img');
   if (!modal || !img) return;
   photoBaseW = 0; photoBaseH = 0;
+  img.onerror = () => {
+    if (photoModalPhotos.length <= 1) return;
+    const failed = photoModalPhotos.splice(photoModalIndex, 1)[0];
+    console.warn('사진 로드 실패, 건너뜀:', failed);
+    photoModalIndex = Math.min(photoModalIndex, photoModalPhotos.length - 1);
+    updatePhotoModalImage();
+  };
   img.src = photoModalPhotos[photoModalIndex] || '';
   const count = document.getElementById('_photoCount');
   if (count) {
@@ -2270,24 +2301,25 @@ function reviewCardH(r, likeCount, iLiked, cmtCount, sellerName) {
   const ismine = r.reviewer_name === myN;
   const escapedPhotos = photos.map(p => esc(p));
   const photosJsonStr = escapedPhotos.map(p => `'${p}'`).join(',');
+  const cleanPhotos = uniquePhotoRefs(photos);
 
   let photosHtml = '';
-  if (photos.length === 1) {
+  if (cleanPhotos.length === 1) {
     photosHtml = `<div class="rv-photos-strip">
       <div class="rv-photos-slides">
         <div class="rv-photo-s">
-          <img src="${escapedPhotos[0]}" alt="후기 사진" loading="lazy">
+          ${fallbackImgHtml(cleanPhotos, '후기 사진', '기타')}
         </div>
       </div>
     </div>`;
-  } else if (photos.length > 1) {
-    const slides = escapedPhotos.map((p, idx) =>
+  } else if (cleanPhotos.length > 1) {
+    const slides = cleanPhotos.map((p, idx) =>
       `<div class="rv-photo-s">
-        <img src="${p}" alt="사진 ${idx + 1}" loading="lazy">
+        ${fallbackImgHtml([p], `사진 ${idx + 1}`, '기타')}
       </div>`).join('');
     photosHtml = `<div class="rv-photos-strip">
       <div class="rv-photos-slides" onscroll="updateRvPhotoCounter(this)">${slides}</div>
-      <div class="rv-photo-counter">1/${photos.length}</div>
+      <div class="rv-photo-counter">1/${cleanPhotos.length}</div>
     </div>`;
   }
 
@@ -2431,17 +2463,17 @@ async function openReviewDetail(reviewId) {
   const photos = (r.photo_urls && r.photo_urls.length) ? r.photo_urls : (r.photo_url ? [r.photo_url] : []);
   let photoHtml = '';
   if (photos.length) {
-    const escapedPhotos = photos.map(p => esc(p));
-    const photosJson = JSON.stringify(escapedPhotos);
-    if (photos.length === 1) {
-      photoHtml = `<div class="rv-photo-slider"><div class="rv-photo-track"><div class="rv-photo-slide" onclick="openPhotoModal('${escapedPhotos[0]}',${photosJson},0)"><img src="${escapedPhotos[0]}" loading="lazy"></div></div></div>`;
+    const cleanPhotos = uniquePhotoRefs(photos);
+    const photosJson = JSON.stringify(cleanPhotos);
+    if (cleanPhotos.length === 1) {
+      photoHtml = `<div class="rv-photo-slider"><div class="rv-photo-track"><div class="rv-photo-slide" onclick="openPhotoModal(${jsStr(cleanPhotos[0])},${esc(photosJson)},0)">${fallbackImgHtml(cleanPhotos, '후기 사진', '기타')}</div></div></div>`;
     } else {
-      const slides = escapedPhotos.map((p, i) =>
-        `<div class="rv-photo-slide" onclick="openPhotoModal('${p}',${photosJson},${i})"><img src="${p}" loading="lazy"></div>`
+      const slides = cleanPhotos.map((p, i) =>
+        `<div class="rv-photo-slide" onclick="openPhotoModal(${jsStr(p)},${esc(photosJson)},${i})">${fallbackImgHtml([p], `사진 ${i + 1}`, '기타')}</div>`
       ).join('');
       photoHtml = `<div class="rv-photo-slider" id="_rvPhotoSlider">
-        <div class="rv-photo-track" id="_rvPhotoTrack" onscroll="updateRvDetPhotoCounter(this,${photos.length})">${slides}</div>
-        <div class="rv-photo-counter" id="_rvPhotoCnt">1/${photos.length}</div>
+        <div class="rv-photo-track" id="_rvPhotoTrack" onscroll="updateRvDetPhotoCounter(this,${cleanPhotos.length})">${slides}</div>
+        <div class="rv-photo-counter" id="_rvPhotoCnt">1/${cleanPhotos.length}</div>
       </div>`;
     }
   }
