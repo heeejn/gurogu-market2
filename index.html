@@ -1420,7 +1420,8 @@ function _processItems(data) {
 }
 
 async function fetchItems() {
-  // Worker와 Supabase를 병렬로 요청 → 먼저 성공하는 쪽 사용 (가장 빠른 경로)
+  // 세 경로를 동시에 요청 — 가장 먼저 성공하는 쪽 사용
+  // 경로 1: Cloudflare Worker (캐시 우선, 빠름)
   const workerPromise = (async () => {
     try {
       const ctrl = new AbortController();
@@ -1431,31 +1432,41 @@ async function fetchItems() {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) return _processItems(data);
       }
-    } catch (e) {
-      console.warn('Worker 실패:', e.message);
-    }
+    } catch (e) { console.warn('Worker 실패:', e.message); }
     return null;
   })();
 
-  const supabasePromise = (async () => {
-    const cols = 'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls';
+  // 경로 2: Supabase JS 클라이언트 (공식 SDK, 8초 타임아웃)
+  const sbPromise = (async () => {
     try {
+      const query = sb.from('items')
+        .select('id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls')
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const { data, error } = await Promise.race([
+        query,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000)),
+      ]);
+      if (!error && data && data.length > 0) return _processItems(data);
+      if (error) console.warn('Supabase JS 실패:', error.message);
+    } catch (e) { console.warn('Supabase JS 예외:', e.message); }
+    return null;
+  })();
+
+  // 경로 3: Supabase REST API 직접 호출 (SDK와 다른 코드 경로)
+  const restPromise = (async () => {
+    try {
+      const cols = 'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls';
       const res = await restRows(`items?select=${encodeURIComponent(cols)}&limit=200&order=created_at.desc`, 10000);
-      if (!res.error && res.data) return _processItems(res.data);
-    } catch (e) {
-      console.warn('Supabase 실패:', e.message);
-    }
-    // 컬럼 오류 시 최소 컬럼으로 재시도
-    try {
-      const res = await restRows(`items?select=id,title,price,category,description,seller_name,sold,created_at&limit=200`, 10000);
-      if (!res.error && res.data) return _processItems(res.data);
-    } catch (e) {}
+      if (!res.error && res.data && res.data.length > 0) return _processItems(res.data);
+      if (res.error) console.warn('REST 실패:', JSON.stringify(res.error));
+    } catch (e) { console.warn('REST 예외:', e.message); }
     return null;
   })();
 
-  // 둘 중 먼저 성공(non-null)하는 쪽 채택, 둘 다 실패하면 null
+  // 셋 중 먼저 성공(non-null)하는 쪽 채택, 모두 실패하면 null
   const toResult = p => p.then(v => v !== null ? v : Promise.reject('no data'));
-  return Promise.any([toResult(workerPromise), toResult(supabasePromise)]).catch(() => null);
+  return Promise.any([toResult(workerPromise), toResult(sbPromise), toResult(restPromise)]).catch(() => null);
 }
 
 function withTimeout(promise, ms, fallback = null) {
