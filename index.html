@@ -579,7 +579,11 @@ function forgetCachedComments(id) {
 }
 function itemMedia(v, category) {
   const thumbs = itemThumbList(v);
-  return thumbs.length ? `<img src="${thumbs[0]}" alt="상품 사진">` : '<div class="photo-loading" aria-label="사진 불러오는 중"></div>';
+  if (thumbs.length) return `<img src="${thumbs[0]}" alt="상품 사진">`;
+  const fallback = plainEmoji(v);
+  return fallback
+    ? `<span aria-label="상품 사진 없음">${fallback}</span>`
+    : '<div class="photo-loading" aria-label="사진 불러오는 중"></div>';
 }
 function jsStr(v) {
   return JSON.stringify(String(v || ''));
@@ -1533,7 +1537,11 @@ async function hydrateVisiblePhotos(ids, q) {
 }
 
 function prefetchVisibleDetails(q) {
-  const visible = filterMainItems(q).slice(0, 16);
+  const visibleIds = visibleCardIds();
+  const all = filterMainItems(q);
+  const visible = visibleIds.length
+    ? all.filter(i => visibleIds.includes(String(i.id))).slice(0, 24)
+    : all.slice(0, 16);
   const missing = visible
     .filter(i => !(itemThumbList(i.emoji).length || itemPhotoList(i.emoji).length) && !photoHydrationPromises.has(i.id))
     .map(i => i.id);
@@ -1541,6 +1549,21 @@ function prefetchVisibleDetails(q) {
   visible
     .filter(i => itemThumbList(i.emoji).length || itemPhotoList(i.emoji).length)
     .forEach(i => hydrateItemPhotos(i.id, q));
+}
+
+function visibleCardIds() {
+  const screen = document.getElementById('s-main');
+  if (!screen) return [];
+  const sr = screen.getBoundingClientRect();
+  const top = sr.top - 450;
+  const bottom = sr.bottom + 700;
+  return [...document.querySelectorAll('#s-main .card[data-id]')]
+    .filter(card => {
+      const r = card.getBoundingClientRect();
+      return r.bottom >= top && r.top <= bottom;
+    })
+    .map(card => card.dataset.id)
+    .filter(Boolean);
 }
 
 async function hydrateVisiblePhotoBatch(ids, q) {
@@ -1573,7 +1596,7 @@ async function hydrateVisiblePhotoBatch(ids, q) {
   cachedItems = cachedItems.map(item => {
     const data = byId.get(item.id);
     if (!data) return item;
-    const nextEmoji = itemRecordPayload(data) || data.emoji || item.emoji || '';
+    const nextEmoji = itemRecordPayload(data) || data.emoji || item.emoji || emM[data.category || item.category || '기타'] || '📦';
     const thumbs = itemThumbList(nextEmoji);
     if (thumbs[0]) rememberItemThumbs(item.id, thumbs);
     hydratedPhotoIds.add(item.id);
@@ -1615,7 +1638,7 @@ async function hydrateItemPhotos(id, q) {
     hydratingPhotoIds.delete(id);
     if (error || !data) return existing;
 
-    let nextEmoji = itemRecordPayload(data) || data.emoji || '';
+    let nextEmoji = itemRecordPayload(data) || data.emoji || emM[data.category || existing?.category || '기타'] || '📦';
     const photos = itemPhotoList(nextEmoji);
     let thumbs = itemThumbList(nextEmoji);
     if (photos.length && (!thumbs.length || thumbs[0] === photos[0] || thumbs[0].length > 140000 || thumbs.length < photos.length)) {
@@ -1923,6 +1946,8 @@ async function renderMain(q) {
   <div class="content"><div class="grid"><div class="loading"><div class="spin"></div> 불러오는 중...</div></div></div>
   <div class="footer-credit">Made by 윤듬듬🐢</div>`;
 
+  attachMainScrollHydration();
+
   if (statF === '후기') {
     renderReviews();
   } else {
@@ -2023,6 +2048,16 @@ function prefetchSoon(q) {
   prefetchTimer = setTimeout(() => prefetchVisibleDetails(q), 80);
 }
 
+function attachMainScrollHydration() {
+  const screen = document.getElementById('s-main');
+  if (!screen || screen._photoHydrationAttached) return;
+  screen._photoHydrationAttached = true;
+  screen.addEventListener('scroll', () => {
+    if (statF === '후기') return;
+    prefetchSoon(document.getElementById('_sq')?.value || '');
+  }, { passive: true });
+}
+
 function filterMainItems(q) {
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
   return cachedItems.filter(i => {
@@ -2046,7 +2081,7 @@ function cardH(i, liked) {
   if (i.fcfs)         badges.push('<span class="fcfs-badge">⚡ 선착순</span>');
   if (isOwn && !i.sold) badges.push('<span class="mine-badge">내 상품</span>');
   const topBadge = badges.length ? `<div class="card-badges">${badges.join('')}</div>` : '';
-  return `<div class="card" onmouseenter="prefetchItemDetail('${i.id}')" onclick="openDet('${i.id}')">
+  return `<div class="card" data-id="${esc(i.id)}" onmouseenter="prefetchItemDetail('${i.id}')" onclick="openDet('${i.id}')">
     ${topBadge}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
     <div class="card-thumb-wrap"><div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>${multiBadge}</div>
