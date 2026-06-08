@@ -1420,35 +1420,42 @@ function _processItems(data) {
 }
 
 async function fetchItems() {
-  // 1. Cloudflare Worker 캐시 (빠름 — 45초 캐싱)
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 4000);
-    const res = await fetch('https://gurogu-upload.yhj6350.workers.dev/items', { signal: ctrl.signal });
-    clearTimeout(t);
-    if (res.ok) return _processItems(await res.json());
-  } catch (e) {
-    console.warn('Worker 캐시 실패, Supabase 직접 연결로 전환', e.message);
-  }
+  // Worker와 Supabase를 병렬로 요청 → 먼저 성공하는 쪽 사용 (가장 빠른 경로)
+  const workerPromise = (async () => {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(`${WORKER_URL}/items`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return _processItems(data);
+      }
+    } catch (e) {
+      console.warn('Worker 실패:', e.message);
+    }
+    return null;
+  })();
 
-  // 2. 직접 Supabase (fallback)
-  const columnSets = [
-    'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls',
-    'id,title,price,category,description,seller_name,seller_photo,sold,created_at,thumbnail_url,photo_urls',
-    'id,title,price,category,description,seller_name,sold,created_at,thumbnail_url,photo_urls',
-    'id,title,price,category,description,seller_name,sold,created_at',
-  ];
-  let data = null, error = null;
-  for (const columns of columnSets) {
-    const res = await restRows(`items?select=${encodeURIComponent(columns)}&limit=200`, 20000);
-    data = res.data; error = res.error;
-    if (!error) break;
-    if (error.name === 'AbortError') break;
-    if (error.code !== '42703') break;
-    console.warn('일부 컬럼이 없어 더 기본 형태로 상품을 불러옵니다.', error);
-  }
-  if (error) { console.error(JSON.stringify(error)); return null; }
-  return _processItems(data);
+  const supabasePromise = (async () => {
+    const cols = 'id,title,price,category,description,seller_name,seller_photo,sold,reserved,fcfs,created_at,thumbnail_url,photo_urls';
+    try {
+      const res = await restRows(`items?select=${encodeURIComponent(cols)}&limit=200&order=created_at.desc`, 10000);
+      if (!res.error && res.data) return _processItems(res.data);
+    } catch (e) {
+      console.warn('Supabase 실패:', e.message);
+    }
+    // 컬럼 오류 시 최소 컬럼으로 재시도
+    try {
+      const res = await restRows(`items?select=id,title,price,category,description,seller_name,sold,created_at&limit=200`, 10000);
+      if (!res.error && res.data) return _processItems(res.data);
+    } catch (e) {}
+    return null;
+  })();
+
+  // 둘 중 먼저 성공(non-null)하는 쪽 채택, 둘 다 실패하면 null
+  const toResult = p => p.then(v => v !== null ? v : Promise.reject('no data'));
+  return Promise.any([toResult(workerPromise), toResult(supabasePromise)]).catch(() => null);
 }
 
 function withTimeout(promise, ms, fallback = null) {
@@ -1930,8 +1937,19 @@ async function renderMain(q) {
     }
     // fetch 완료 후 현재 탭이 판매중/판매완료면 렌더 (탭 전환 후 완료되는 경우 포함)
     if (statF !== '후기') {
-      renderMainList(q, false);
-      if (items) hydrateMainMeta(q);
+      if (!items && !cachedItems.length) {
+        // 두 번 다 실패 + 로컬 캐시도 없음 → 에러 UI 표시
+        const grid = document.querySelector('#s-main .grid');
+        if (grid) grid.innerHTML = `<div class="empty-state" style="grid-column:span 2;padding:40px 16px;text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">😢</div>
+          <div style="font-weight:700;margin-bottom:6px">상품을 불러오지 못했어요</div>
+          <div style="color:var(--text3);font-size:12px;margin-bottom:16px">네트워크 연결을 확인하고 다시 시도해주세요</div>
+          <button onclick="renderMain()" style="background:var(--pink);color:#fff;border:none;border-radius:20px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🔄 다시 시도</button>
+        </div>`;
+      } else {
+        renderMainList(q, false);
+        if (items) hydrateMainMeta(q);
+      }
     }
   }
 
