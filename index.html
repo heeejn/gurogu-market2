@@ -91,9 +91,11 @@
     .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .card { background: var(--surface); border-radius: var(--r); border: .5px solid var(--br); overflow: hidden; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
     .card:active { opacity: .88; }
-    .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; }
+    .card-thumb { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; background: var(--surface); }
     .card-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--surface); }
-    .photo-img { opacity: 0; transition: opacity .16s ease; }
+    .card-thumb.ct-shimmer { background: linear-gradient(110deg, #F3F5F8 8%, #FAFBFC 18%, #EEF1F5 33%); background-size: 200% 100%; animation: photoShimmer 1.2s linear infinite; }
+    .card-thumb.ct-loaded { background: var(--surface); animation: none; }
+    .photo-img { opacity: 0; transition: opacity .12s ease; }
     .photo-img.loaded { opacity: 1; }
     .photo-loading { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: transparent; background: linear-gradient(110deg, #F3F5F8 8%, #FAFBFC 18%, #EEF1F5 33%); background-size: 200% 100%; animation: photoShimmer 1.2s linear infinite; font-size: 0; }
     @keyframes photoShimmer { to { background-position-x: -200%; } }
@@ -599,6 +601,8 @@ function fallbackImgHtml(urls, alt = '사진', category = '기타', loading = 'l
 }
 function markImgLoaded(img) {
   img.classList.add('loaded');
+  const thumb = img.closest('.card-thumb');
+  if (thumb) { thumb.classList.remove('ct-shimmer'); thumb.classList.add('ct-loaded'); }
 }
 function nextImgFallback(img) {
   let urls = [];
@@ -1650,7 +1654,7 @@ async function hydrateVisiblePhotoBatch(ids, q) {
       commentCount: item.commentCount ?? 0,
     };
   });
-  if (changed && q !== undefined) renderMainList(q, false);
+  if (changed) targets.forEach(id => updateCardThumb(id));
 }
 
 async function hydrateItemPhotos(id, q) {
@@ -1704,7 +1708,7 @@ async function hydrateItemPhotos(id, q) {
       };
       return merged;
     });
-    if (q !== undefined) renderMainList(q, false);
+    updateCardThumb(id);
     return merged;
   })();
 
@@ -1842,7 +1846,7 @@ async function hydrateMainMeta(q) {
     likeCount: counts.likes.get(i.id) || 0,
     commentCount: counts.comments.get(i.id) || 0,
   }));
-  renderMainList(q, false);
+  cachedItems.forEach(i => updateCardStats(i.id, i.likeCount, i.commentCount, likedItemIds.has(i.id)));
 
 }
 
@@ -2055,6 +2059,33 @@ function selectStatus(status) {
   }
 }
 
+function updateCardThumb(id) {
+  const card = document.querySelector(`#s-main .card[data-id="${id}"]`);
+  if (!card) return;
+  const item = cachedItems.find(i => i.id === id);
+  if (!item) return;
+  const thumbWrap = card.querySelector('.card-thumb-wrap');
+  if (!thumbWrap) return;
+  const photos = itemPhotoList(item.emoji);
+  const thumbs = itemThumbList(item.emoji);
+  const photoCount = photos.length || thumbs.length;
+  const multiBadge = photoCount > 1 ? `<div class="photo-multi-badge">🖼 ${photoCount}</div>` : '';
+  const hasPhoto = photoCount > 0;
+  thumbWrap.innerHTML = `<div class="card-thumb${hasPhoto ? ' ct-shimmer' : ''}">${itemMedia(item.emoji, item.category)}</div>${multiBadge}`;
+}
+
+function updateCardStats(id, likeCount, commentCount, liked) {
+  const card = document.querySelector(`#s-main .card[data-id="${id}"]`);
+  if (!card) return;
+  const stats = card.querySelectorAll('.card-stat');
+  if (stats[0]) stats[0].innerHTML = `<i class="ti ti-heart" aria-hidden="true" style="font-size:10px;"></i>${likeCount}`;
+  if (stats[1]) stats[1].innerHTML = `<i class="ti ti-message-circle" aria-hidden="true" style="font-size:10px;"></i>${commentCount}`;
+  if (liked !== undefined) {
+    const heartBtn = card.querySelector('.heart-btn');
+    if (heartBtn) heartBtn.textContent = liked ? '❤️' : '🤍';
+  }
+}
+
 function renderMainList(q, shouldPrefetch = true) {
   if (statF === '후기') return;
   q = q !== undefined ? q : (document.getElementById('_sq')?.value || '');
@@ -2124,7 +2155,7 @@ function cardH(i, liked) {
   return `<div class="card" data-id="${esc(i.id)}" onmouseenter="prefetchItemDetail('${i.id}')" onclick="openDet('${i.id}')">
     ${topBadge}
     <button class="heart-btn" onclick="event.stopPropagation();doToggleLike('${i.id}',this)">${liked ? '❤️' : '🤍'}</button>
-    <div class="card-thumb-wrap"><div class="card-thumb" style="background:${bgM[i.category] || '#F1EFE8'}">${itemMedia(i.emoji, i.category)}</div>${multiBadge}</div>
+    <div class="card-thumb-wrap"><div class="card-thumb${(itemPhotoList(i.emoji).length || itemThumbList(i.emoji).length) ? ' ct-shimmer' : ''}">${itemMedia(i.emoji, i.category)}</div>${multiBadge}</div>
     <div class="card-body">
       <div class="card-name">${esc(i.title)}</div>
       <div class="card-price${i.price === 0 ? ' price-nanoom' : ''}">${i.price === 0 ? '나눔 💚' : i.price.toLocaleString()+'원'}</div>
@@ -2196,9 +2227,16 @@ async function fetchAndUpdateReviewBadge() {
 }
 
 async function fetchReviewsBundle() {
+  const fallback = {
+    rvResp: { data: null, error: new Error('reviews timeout') },
+    likesResp: { data: [], error: null },
+    cmtsResp: { data: [], error: null },
+    itemsResp: { data: [], error: null },
+  };
+
   const workerPromise = (async () => {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 3500);
+    const timer = setTimeout(() => ctrl.abort(), 2500);
     try {
       const res = await fetch(`${WORKER_URL}/reviews`, { signal: ctrl.signal });
       if (!res.ok) throw new Error(`Worker reviews ${res.status}`);
@@ -2214,28 +2252,19 @@ async function fetchReviewsBundle() {
     }
   })();
 
-  try {
-    return await workerPromise;
-  } catch (e) {
-    console.warn('Worker 후기 실패:', e.message);
-  }
-
   const directPromise = Promise.all([
     sb.from('reviews').select('*').order('created_at', { ascending: false }),
     sb.from('review_likes').select('review_id,user_name'),
     sb.from('review_comments').select('review_id'),
     sb.from('items').select('title,seller_name'),
-  ]);
-  const timeoutBundle = {
-    rvResp: { data: null, error: new Error('reviews timeout') },
-    likesResp: { data: [], error: null },
-    cmtsResp: { data: [], error: null },
-    itemsResp: { data: [], error: null },
-  };
-  const direct = await withTimeout(directPromise, 4500, null);
-  if (!direct) return timeoutBundle;
-  const [rvResp, likesResp, cmtsResp, itemsResp] = direct;
-  return { rvResp, likesResp, cmtsResp, itemsResp };
+  ]).then(([rvResp, likesResp, cmtsResp, itemsResp]) => ({ rvResp, likesResp, cmtsResp, itemsResp }));
+
+  try {
+    return await Promise.any([workerPromise, directPromise]);
+  } catch (e) {
+    console.warn('후기 로딩 실패:', e);
+    return fallback;
+  }
 }
 
 /* ── 피드 렌더링 ── */
