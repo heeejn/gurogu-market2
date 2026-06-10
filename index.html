@@ -82,6 +82,10 @@
     .filter-bar::-webkit-scrollbar { display: none; }
     .chip { min-height: 36px; min-width: max-content; padding: 0 12px; border-radius: 999px; border: .5px solid var(--br); font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; color: var(--text2); background: var(--surface); font-family: inherit; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1; flex: 0 0 auto; }
     .chip.on { background: var(--pink-bg); color: var(--pink-dark); border-color: var(--pink-br); }
+    .filter-refresh-btn { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 999px; border: .5px solid var(--br2); background: var(--surface); color: var(--text3); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; -webkit-tap-highlight-color: transparent; }
+    .filter-refresh-btn:active { background: var(--bg); color: var(--pink-dark); }
+    @keyframes refreshSpin { to { transform: rotate(360deg); } }
+    .filter-refresh-btn.spinning i { display: inline-block; animation: refreshSpin .6s linear infinite; }
     .stat-tabs { display: flex; background: var(--surface); border-bottom: .5px solid var(--br); position: sticky; top: calc(56px + env(safe-area-inset-top,0px)); z-index: 15; }
     .stab { flex: 1; text-align: center; padding: 9px 0; font-size: 13px; font-weight: 700; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; -webkit-tap-highlight-color: transparent; }
     .stab.on { color: var(--pink-dark); border-bottom-color: var(--pink); }
@@ -991,9 +995,9 @@ async function refreshActiveScreen() {
 /* ── 새로고침 버튼 ── */
 async function doManualRefresh(btn) {
   if (ptrRefreshing) return;
-  if (btn) { btn.disabled = true; btn.querySelector('i')?.classList.add('spin'); }
+  if (btn) { btn.disabled = true; btn.classList.add('spinning'); }
   await refreshActiveScreen();
-  if (btn) { btn.disabled = false; btn.querySelector('i')?.classList.remove('spin'); }
+  if (btn) { btn.disabled = false; btn.classList.remove('spinning'); }
 }
 
 /* ── 로고 탭 → 맨 위 or 새로고침 ── */
@@ -1985,7 +1989,6 @@ async function renderMain(q, force = false) {
         <div class="pill-av">${av(myP, myN, 22)}</div>
         <span>${myN}</span>
       </div>
-      <button class="hbtn" id="_refresh-btn" onclick="doManualRefresh(this)" aria-label="새로고침"><i class="ti ti-refresh" aria-hidden="true"></i></button>
       <button class="hbtn" onclick="renderNotifications();goTo('s-noti')" aria-label="알림"><i class="ti ti-bell" aria-hidden="true"></i><span class="noti-badge" id="_noti-badge"></span></button>
       <div class="hbtn hbtn-pink" onclick="renderSell();goTo('s-sell')">+ 팔기</div>
     </div>
@@ -1999,6 +2002,7 @@ async function renderMain(q, force = false) {
     </div>
   </div>
   <div class="filter-bar">
+    <button id="_refresh-btn" class="filter-refresh-btn" onclick="doManualRefresh(this)" aria-label="새로고침"><i class="ti ti-refresh" aria-hidden="true"></i></button>
     ${cats.map(c => `<div class="chip${catF === c ? ' on' : ''}" data-cat="${c}" onclick="selectCategory('${c}')">${c === '전체' ? '전체' : cEm[c] + ' ' + c}</div>`).join('')}
   </div>
   <div class="stat-tabs">
