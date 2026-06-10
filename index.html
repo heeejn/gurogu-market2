@@ -934,9 +934,18 @@ function goBack() {
   const prev = screenHistory[screenHistory.length - 1];
   document.getElementById(cur).className = 'screen right';
   document.getElementById(prev).className = 'screen active';
+  if (cur === 's-det') _stopCmtPoll(); // 상세화면 떠나면 댓글 폴링 중지
   if (prev === 's-main') {
     renderMainList();
     hydrateMainMeta(document.getElementById('_sq')?.value || '');
+    // 상세/판매/마이 페이지에서 메인으로 돌아오면 상품 목록 백그라운드 갱신
+    fetchItems().then(items => {
+      if (items) {
+        cachedItems = mergeFetchedItems(items);
+        _saveItemsCache(cachedItems);
+        if (screenHistory[screenHistory.length - 1] === 's-main' && statF !== '후기') renderMainList();
+      }
+    });
   }
   if (prev === 's-my') renderMy();
 }
@@ -3229,6 +3238,7 @@ function renderDet() {
   });
 
   loadComments(it.id);
+  _startCmtPoll(it.id); // 상세화면 열려있는 동안 20초마다 댓글 자동 갱신
   // 고민돼요 loadGomind()는 openDet()에서 병렬 fetch로 처리 — 여기서 호출 안 함
 }
 
@@ -3239,16 +3249,15 @@ async function loadComments(itemId = curId, force = false) {
 }
 
 async function loadCommentsData(itemId, force = false) {
-  if (!force && commentCache.has(itemId)) {
-    const cached = commentCache.get(itemId);
-    renderComments(itemId, cached);
-    return cached;
+  // 캐시가 있으면 즉시 화면에 표시 (응답성), 그 후 항상 서버에서 최신 데이터 갱신
+  const inMemory = commentCache.get(itemId);
+  const showNow = inMemory || (!force ? getCachedComments(itemId) : null);
+  if (showNow) {
+    if (!inMemory) commentCache.set(itemId, showNow);
+    renderComments(itemId, showNow);
   }
-  const localCached = !force ? getCachedComments(itemId) : null;
-  if (localCached) {
-    commentCache.set(itemId, localCached);
-    renderComments(itemId, localCached);
-  }
+
+  // 이미 fetch 진행 중이면 중복 요청 방지 (force는 항상 새 요청)
   if (!force && commentPromises.has(itemId)) return commentPromises.get(itemId);
 
   commentsLoading.add(itemId);
@@ -3256,17 +3265,17 @@ async function loadCommentsData(itemId, force = false) {
     commentsLoading.delete(itemId);
     commentCache.set(itemId, cmts);
     rememberComments(itemId, cmts);
-    renderComments(itemId, cmts);
+    renderComments(itemId, cmts); // 항상 최신 데이터로 갱신
     return cmts;
   }).catch(e => {
     commentsLoading.delete(itemId);
-    console.error(e);
-    return [];
+    console.error('댓글 로드 실패:', e);
+    return showNow || [];
   }).finally(() => {
     commentPromises.delete(itemId);
   });
   commentPromises.set(itemId, promise);
-  return localCached || promise;
+  return showNow || promise;
 }
 
 function renderComments(itemId, cmts) {
@@ -3733,6 +3742,26 @@ function saveNick() {
 
 let notificationTimer;
 /* ════════════════════════════════
+   댓글 자동 폴링 (상세화면 열려있는 동안)
+════════════════════════════════ */
+let _cmtPollTimer = null;
+function _startCmtPoll(itemId) {
+  clearInterval(_cmtPollTimer);
+  _cmtPollTimer = setInterval(() => {
+    if (curId === itemId && screenHistory[screenHistory.length - 1] === 's-det') {
+      loadComments(itemId, true); // 20초마다 서버에서 최신 댓글 가져오기
+    } else {
+      clearInterval(_cmtPollTimer);
+      _cmtPollTimer = null;
+    }
+  }, 20000);
+}
+function _stopCmtPoll() {
+  clearInterval(_cmtPollTimer);
+  _cmtPollTimer = null;
+}
+
+/* ════════════════════════════════
    🔔 네이티브 Web Push (VAPID)
 ════════════════════════════════ */
 let _swReg = null;
@@ -3781,6 +3810,7 @@ async function _navigateToPushItem(itemId) {
     document.getElementById(s).className = s === 's-main' ? 'screen active' : 'screen right';
   });
   screenHistory = ['s-main'];
+  _stopCmtPoll();
 
   if (String(itemId).startsWith('rv:')) {
     const reviewId = itemId.slice(3);
@@ -3793,6 +3823,9 @@ async function _navigateToPushItem(itemId) {
     openReviewDetail(reviewId);
     return;
   }
+  // 알림에서 오면 댓글 캐시 강제 무효화 → 최신 댓글 바로 표시
+  commentCache.delete(itemId);
+  forgetCachedComments(itemId);
   await openDet(itemId);
 }
 
@@ -4076,6 +4109,31 @@ function closeUpdatePopup() {
     setTimeout(() => overlay.remove(), 180);
   }
 }
+
+/* ── 앱이 다시 보일 때 자동 갱신 (홈버튼 → 복귀, 탭 전환 후 복귀 등) ── */
+let _lastVisibleAt = Date.now();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && myN) {
+    const away = Date.now() - _lastVisibleAt;
+    if (away < 5000) return; // 5초 미만 이탈은 무시
+    const screen = screenHistory[screenHistory.length - 1];
+    if (screen === 's-det' && curId) {
+      // 상세화면: 댓글 강제 갱신
+      loadComments(curId, true);
+    } else if (screen === 's-main') {
+      // 메인화면: 상품 목록 백그라운드 갱신 (스피너 없이)
+      fetchItems().then(items => {
+        if (items) {
+          cachedItems = mergeFetchedItems(items);
+          _saveItemsCache(cachedItems);
+          if (screenHistory[screenHistory.length - 1] === 's-main' && statF !== '후기') renderMainList();
+        }
+      });
+    }
+  } else {
+    _lastVisibleAt = Date.now();
+  }
+});
 
 /* ── 시작 ── */
 if (myN) {
